@@ -1352,7 +1352,8 @@ function newsConvert(){
     const result = [];
     for(const tok of tokens){
       if(tok.type !== 'text'){ result.push(tok); continue; }
-      const LP = /(?:__\[([^\]]+)\]\(([^)]+)\)__|(?<!\!)\[([^\]]+)\]\(([^)]+)\))/g;
+      // Modified regex to avoid lookbehind (unsupported in some browsers)
+      const LP = /(?:__\[([^\]]+)\]\(([^)]+)\)__|\[([^\]]+)\]\(([^)]+)\))/g;
       let last = 0; let m;
       LP.lastIndex = 0;
       let txt = tok.text.replace(/\[\s*\]\([^)]+\)\s*/g,''); // strip empty anchors
@@ -1447,130 +1448,8 @@ function newsConvert(){
   setTimeout(()=>{ btn.textContent=orig; }, 1800);
   document.getElementById('newsOutputCode').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
+
 /*
-
-  // Get and format the date
-  const dateVal = document.getElementById('newsDate').value; // YYYY-MM-DD
-  let dateDisplay = '';
-  if(dateVal){
-    const [y,m,d] = dateVal.split('-');
-    dateDisplay = `${d}/${m}/${y}`;
-  } else {
-    const now = new Date();
-    dateDisplay = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-  }
-
-  const paragraphs = rawText.split(/\n\s*\n/).map(p=>p.replace(/\n/g,' ').trim()).filter(Boolean);
-
-  // Link regex: matches __[Name](URL)__ or [Name](URL) or [ ](URL)__[Name](URL)__
-  // Captures optional separator before link (",", ", and", " and", etc.)
-  // We parse the full paragraph to extract: story text + links with separators
-  function parseParagraph(para){
-    // Normalise: remove __ bold markers around links, collapse whitespace
-    // Pattern: optional [ ](url) (empty link placeholder) followed by __[Name](URL)__
-    // or just [Name](URL) or __[Name](URL)__
-
-    // First: remove empty placeholder links like [ ](url) that appear before the real link
-    para = para.replace(/\[\s*\]\([^)]+\)\s*/g, '');
-
-    // Now extract all links with their preceding separators
-    // Link pattern: __[Name](URL)__ or [Name](URL)
-    const linkRe = /(__\[([^\]]+)\]\(([^)]+)\)__|(?<!\!)\[([^\]]+)\]\(([^)]+)\))/g;
-
-    const links = [];
-    let lastIndex = 0;
-    let storyText = '';
-    let match;
-
-    // Find where the first link starts to extract story text
-    const firstLink = linkRe.exec(para);
-    if(!firstLink){
-      // No links — just a plain text paragraph
-      return { story: para.replace(/__/g,'').trim(), links:[] };
-    }
-
-    // Story text is everything before the first link
-    storyText = para.slice(0, firstLink.index)
-      .replace(/\[\s*\]\([^)]+\)/g,'') // remove empty anchors
-      .replace(/__/g,'')
-      .trim();
-
-    // Reset and collect all links with separators
-    linkRe.lastIndex = 0;
-    let remaining = para;
-    // Strip the story part
-    const firstLinkIdx = para.search(/(__\[[^\]]+\]\([^)]+\)__|(?<!\!)\[[^\]]+\]\([^)]+\))/);
-    const afterStory = para.slice(firstLinkIdx);
-
-    // Split on link pattern, keeping separators
-    const parts = afterStory.split(/(__\[[^\]]+\]\([^)]+\)__|(?<!\!)\[[^\]]+\]\([^)]+\))/);
-
-    let pendingSep = '';
-    for(const part of parts){
-      // Is this part a link?
-      const lm = part.match(/^(?:__\[([^\]]+)\]\(([^)]+)\)__|(?<!\!)\[([^\]]+)\]\(([^)]+)\))$/);
-      if(lm){
-        const name = (lm[1]||lm[3]||'').trim();
-        const url  = (lm[2]||lm[4]||'').trim();
-        if(name && url){
-          links.push({ name, url, sep: pendingSep.trim() });
-          pendingSep = '';
-        }
-      } else {
-        // Separator text between links (", ", ", and", " and", etc.)
-        const cleaned = part.replace(/__/g,'').trim();
-        if(cleaned) pendingSep = cleaned;
-      }
-    }
-
-    return { story: storyText, links };
-  }
-
-  function buildWpLine({ story, links }){
-    let line = '';
-
-    // Story text span
-    if(story){
-      line += `<span style="font-weight: 400;">${story} </span>`;
-    }
-
-    // Links
-    links.forEach((lk, idx) => {
-      // Separator between links
-      if(idx > 0 && lk.sep){
-        const sep = lk.sep.replace(/^,?\s*(and)\s*$/i,', and').replace(/^,\s*$/,',');
-        line += `<span style="font-weight: 400;">${sep}</span>`;
-      }
-      line += `<a href="${lk.url}" target="_blank" rel="noopener noreferrer"> <span style="font-weight: 400;">${lk.name}</span></a>`;
-    });
-
-    return line;
-  }
-
-  // Build full WP output
-  const lines = paragraphs.map(p => buildWpLine(parseParagraph(p)));
-  const heading = `<h6>Daily News: ${dateDisplay}</h6>`;
-  const body = lines.join('\n');
-  const output = `<div class="blue-color">\n${heading}\n${body}\n</div>`;
-
-  document.getElementById('newsOutputCode').value = output;
-
-  // Feedback
-  const status = document.getElementById('newsApplyStatus');
-  status.textContent = `✓ ${paragraphs.length} paragraph${paragraphs.length!==1?'s':''} converted`;
-  status.style.color = 'var(--c-match)';
-  setTimeout(()=>{ status.textContent=''; }, 3000);
-
-  const btn = document.getElementById('newsApplyBtn');
-  const orig = btn.textContent;
-  btn.textContent = '✓ Converted!';
-  setTimeout(()=>{ btn.textContent = orig; }, 1800);
-
-  // Scroll to output
-  document.getElementById('newsOutputCode').scrollIntoView({behavior:'smooth', block:'nearest'});
-}
-*/
-
 function newsCopyCode(){
   const text = document.getElementById('newsOutputCode').value;
   if(!text.trim()){ alert('Nothing to copy — paste your text and click Convert first.'); return; }
@@ -1674,7 +1553,13 @@ function extractTendersFromHTML(html){
       let sib=outerTr.nextElementSibling;
       while(sib){
         const sp=Array.from(sib.querySelectorAll('p')).find(p=>p.textContent.trim().startsWith('Sector:'));
-        if(sp){sector=sp.textContent.trim().replace(/^Sector:\s*/,'');const dp=sib.querySelector('p.read-more');if(dp)description=decodeEnt(dp.textContent.replace(/\s+/g,' ').trim());break;}
+        // Refactor block for clarity and compatibility
+        if (sp) {
+          sector = sp.textContent.trim().replace(/^Sector:\s*/, '');
+          const dp = sib.querySelector('p.read-more');
+          if (dp) description = decodeEnt(dp.textContent.replace(/\s+/g, ' ').trim());
+          break;
+        }
         if(sib.querySelector('a.headText')) break;
         sib=sib.nextElementSibling;
       }
