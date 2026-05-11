@@ -1280,9 +1280,9 @@ function newsClearEditor(){ document.getElementById('newsEditorArea').innerHTML=
 
 function newsConvert(){
   const editor = document.getElementById('newsEditorArea');
-  const rawHtml = (editor.innerHTML||'').trim();
-  const rawText = (editor.innerText||editor.textContent||'').trim();
-  if(!rawText){ alert('Please paste your news text first.'); return; }
+  if(!(editor.innerText||editor.textContent||'').trim()){
+    alert('Please paste your news text first.'); return;
+  }
 
   // Format date
   const dateVal = document.getElementById('newsDate').value;
@@ -1295,161 +1295,94 @@ function newsConvert(){
     dateDisplay = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
   }
 
-  // ── Strategy: parse the editor's DOM directly ──────────────────────────────
-  // This preserves <a href> URLs that would be lost via innerText.
-  // Walk the editor's child nodes, split on block elements (p, div, br pairs)
-  // to get one "paragraph" per story, then within each paragraph extract
-  // text nodes and <a> nodes in order.
-
-  function extractParagraphsFromDOM(container){
-    const paras = [];
-    let current = []; // array of {type:'text'|'link', text, url, sep}
-
-    function flush(){
-      if(current.length) paras.push(current);
-      current = [];
+  // Walk the editor DOM — preserves <a href> URLs that innerText would strip
+  function extractParas(container){
+    const paras=[], flush=()=>{if(current.length){paras.push(current);current=[];}};
+    let current=[];
+    function walk(node){
+      if(node.nodeType===Node.TEXT_NODE){ if(node.textContent) current.push({type:'text',text:node.textContent}); return; }
+      if(node.nodeType!==Node.ELEMENT_NODE) return;
+      const tag=node.tagName.toLowerCase();
+      if(tag==='a'){
+        const href=(node.getAttribute('href')||'').trim();
+        const txt=(node.innerText||node.textContent||'').trim();
+        if(href&&txt) current.push({type:'link',text:txt,url:href});
+        else if(txt)  current.push({type:'text',text:txt});
+        return;
+      }
+      if(['p','div','h1','h2','h3','h4','h5','h6','li'].includes(tag)){ for(const c of node.childNodes) walk(c); flush(); return; }
+      if(tag==='br'){ flush(); return; }
+      for(const c of node.childNodes) walk(c);
     }
-
-    function walkNode(node){
-      if(node.nodeType === Node.TEXT_NODE){
-        const t = node.textContent;
-        if(t) current.push({type:'text', text:t});
-        return;
-      }
-      if(node.nodeType !== Node.ELEMENT_NODE) return;
-      const tag = node.tagName.toLowerCase();
-
-      if(tag === 'a'){
-        const href = node.getAttribute('href')||'';
-        const text = node.innerText||node.textContent||'';
-        if(href && text.trim()) current.push({type:'link', text:text.trim(), url:href});
-        else if(text.trim()) current.push({type:'text', text:text});
-        return;
-      }
-      // Block elements = paragraph break
-      if(['p','div','br','h1','h2','h3','h4','h5','h6','li'].includes(tag)){
-        if(tag==='br'){
-          // Two consecutive <br> = paragraph break; single <br> = space
-          flush();
-          return;
-        }
-        // Walk children first
-        for(const child of node.childNodes) walkNode(child);
-        flush();
-        return;
-      }
-      // Inline elements — walk children
-      for(const child of node.childNodes) walkNode(child);
-    }
-
-    for(const child of container.childNodes) walkNode(child);
+    for(const c of container.childNodes) walk(c);
     flush();
     return paras;
   }
 
-  // ── Also handle markdown __[Name](URL)__ in text nodes (fallback) ──────────
-  function expandMarkdownLinks(tokens){
-    const result = [];
+  // Expand __[Name](URL)__ markdown in plain text tokens
+  function expandMd(tokens){
+    const out=[];
+    const LP=/(?:__\[([^\]]+)\]\(([^)]+)\)__|(?<!\!)\[([^\]]+)\]\(([^)]+)\))/g;
     for(const tok of tokens){
-      if(tok.type !== 'text'){ result.push(tok); continue; }
-      // Modified regex to avoid lookbehind (unsupported in some browsers)
-      const LP = /(?:__\[([^\]]+)\]\(([^)]+)\)__|\[([^\]]+)\]\(([^)]+)\))/g;
-      let last = 0; let m;
-      LP.lastIndex = 0;
-      let txt = tok.text.replace(/\[\s*\]\([^)]+\)\s*/g,''); // strip empty anchors
-      LP.lastIndex = 0;
-      while((m = LP.exec(txt)) !== null){
-        if(m.index > last) result.push({type:'text', text: txt.slice(last, m.index)});
-        result.push({type:'link', text:(m[1]||m[3]||'').trim(), url:(m[2]||m[4]||'').trim()});
-        last = m.index + m[0].length;
+      if(tok.type!=='text'){ out.push(tok); continue; }
+      let txt=tok.text.replace(/\[\s*\]\([^)]+\)\s*/g,'');
+      LP.lastIndex=0; let last=0, m;
+      while((m=LP.exec(txt))!==null){
+        if(m.index>last) out.push({type:'text',text:txt.slice(last,m.index)});
+        out.push({type:'link',text:(m[1]||m[3]||'').trim(),url:(m[2]||m[4]||'').trim()});
+        last=m.index+m[0].length;
       }
-      if(last < txt.length) result.push({type:'text', text: txt.slice(last)});
+      if(last<txt.length) out.push({type:'text',text:txt.slice(last)});
     }
-    return result;
+    return out;
   }
 
-  // ── Build one WP line from a paragraph's token array ────────────────────────
-  function buildLineFromTokens(tokens){
-    tokens = expandMarkdownLinks(tokens);
-
-    // Merge consecutive text tokens
-    const merged = [];
-    for(const tok of tokens){
-      if(tok.type==='text' && merged.length && merged[merged.length-1].type==='text'){
-        merged[merged.length-1].text += tok.text;
-      } else {
-        merged.push({...tok});
-      }
+  // Build one WP HTML line from token array
+  function buildLine(tokens){
+    tokens=expandMd(tokens);
+    const merged=[];
+    for(const t of tokens){
+      if(t.type==='text'&&merged.length&&merged[merged.length-1].type==='text') merged[merged.length-1].text+=t.text;
+      else merged.push({...t});
     }
-
-    let storyText = '';
-    const links = [];
-    let pendingSep = '';
-    let storyDone = false;
-
-    for(const tok of merged){
-      if(tok.type==='link'){
-        if(!storyDone){ storyDone=true; }
-        links.push({name:tok.text, url:tok.url, sep:pendingSep});
-        pendingSep='';
-      } else {
-        if(!storyDone){
-          storyText += tok.text;
-        } else {
-          // Separator between links — clean it up
-          let s = tok.text.replace(/__/g,'').trim();
-          if(s) pendingSep = s;
-        }
-      }
+    let story='',links=[],sep='',storyDone=false;
+    for(const t of merged){
+      if(t.type==='link'){ storyDone=true; links.push({name:t.text,url:t.url,sep}); sep=''; }
+      else if(!storyDone) story+=t.text;
+      else { const s=t.text.replace(/__/g,'').trim(); if(s) sep=s; }
     }
-
-    storyText = storyText.replace(/__/g,'').trim();
-
-    let line = '';
-    if(storyText) line += `<span style="font-weight: 400;">${storyText} </span>`;
-    links.forEach((lk,idx)=>{
-      if(idx>0 && lk.sep){
-        let sep = lk.sep;
-        if(/^,?\s*and\s*$/i.test(sep))  sep=', and';
-        else if(/^,?\s*$/.test(sep))     sep=',';
-        line += `<span style="font-weight: 400;">${sep}</span>`;
+    story=story.replace(/__/g,'').trim();
+    let line='';
+    if(story) line+=`<span style="font-weight: 400;">${story} </span>`;
+    links.forEach((lk,i)=>{
+      if(i>0&&lk.sep){
+        let s=lk.sep;
+        if(/^,?\s*and\s*$/i.test(s)) s=', and';
+        else if(/^,?\s*$/.test(s)) s=',';
+        line+=`<span style="font-weight: 400;">${s}</span>`;
       }
-      line += `<a href="${lk.url}" target="_blank" rel="noopener noreferrer"> <span style="font-weight: 400;">${lk.name}</span></a>`;
+      line+=`<a href="${lk.url}" target="_blank" rel="noopener noreferrer"> <span style="font-weight: 400;">${lk.name}</span></a>`;
     });
     return line;
   }
 
-  // ── Parse DOM paragraphs ─────────────────────────────────────────────────────
-  const domParas = extractParagraphsFromDOM(editor);
+  const paras=extractParas(editor).filter(toks=>toks.map(t=>t.text||'').join('').trim());
+  const lines=paras.map(buildLine);
+  const heading=`<h6>Daily News: ${dateDisplay}</h6>`;
+  const output=`<div class="blue-color">\n${heading}\n${lines.join('\n')}\n</div>`;
 
-  // Filter out empty paragraphs
-  const validParas = domParas.filter(tokens=>{
-    const txt = tokens.map(t=>t.text||'').join('').trim();
-    return txt.length > 0;
-  });
-
-  if(validParas.length===0){
-    alert('No content found. Please paste your news text first.'); return;
-  }
-
-  const lines   = validParas.map(tokens => buildLineFromTokens(tokens));
-  const heading = `<h6>Daily News: ${dateDisplay}</h6>`;
-  const output  = `<div class="blue-color">\n${heading}\n${lines.join('\n')}\n</div>`;
-
-  document.getElementById('newsOutputCode').value = output;
-
-  const status = document.getElementById('newsApplyStatus');
-  status.textContent = `✓ ${validParas.length} paragraph${validParas.length!==1?'s':''} converted`;
-  status.style.color = 'var(--c-match)';
-  setTimeout(()=>{ status.textContent=''; }, 3000);
-  const btn = document.getElementById('newsApplyBtn');
-  const orig = btn.textContent;
-  btn.textContent = '✓ Converted!';
-  setTimeout(()=>{ btn.textContent=orig; }, 1800);
-  document.getElementById('newsOutputCode').scrollIntoView({behavior:'smooth', block:'nearest'});
+  document.getElementById('newsOutputCode').value=output;
+  const status=document.getElementById('newsApplyStatus');
+  status.textContent=`✓ ${paras.length} paragraph${paras.length!==1?'s':''} converted`;
+  status.style.color='var(--c-match)';
+  setTimeout(()=>{status.textContent='';},3000);
+  const btn=document.getElementById('newsApplyBtn');
+  const orig=btn.textContent; btn.textContent='✓ Converted!';
+  setTimeout(()=>{btn.textContent=orig;},1800);
+  document.getElementById('newsOutputCode').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-/*
+
 function newsCopyCode(){
   const text = document.getElementById('newsOutputCode').value;
   if(!text.trim()){ alert('Nothing to copy — paste your text and click Convert first.'); return; }
@@ -1553,13 +1486,7 @@ function extractTendersFromHTML(html){
       let sib=outerTr.nextElementSibling;
       while(sib){
         const sp=Array.from(sib.querySelectorAll('p')).find(p=>p.textContent.trim().startsWith('Sector:'));
-        // Refactor block for clarity and compatibility
-        if (sp) {
-          sector = sp.textContent.trim().replace(/^Sector:\s*/, '');
-          const dp = sib.querySelector('p.read-more');
-          if (dp) description = decodeEnt(dp.textContent.replace(/\s+/g, ' ').trim());
-          break;
-        }
+        if(sp){sector=sp.textContent.trim().replace(/^Sector:\s*/,'');const dp=sib.querySelector('p.read-more');if(dp)description=decodeEnt(dp.textContent.replace(/\s+/g,' ').trim());break;}
         if(sib.querySelector('a.headText')) break;
         sib=sib.nextElementSibling;
       }
