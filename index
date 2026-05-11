@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Summary Tool</title>
+<style>
+  :root {
+    --c-bg:#f7f6f3;--c-surface:#ffffff;--c-border:#e2dfd8;--c-border-dark:#c9c5bc;
+    --c-text:#1a1916;--c-text-muted:#6b6860;--c-text-hint:#9b9890;
+    --c-accent:#1a472a;--c-accent-light:#e8f4ec;--c-accent-mid:#2d6a4f;
+    --c-amber:#92400e;--c-amber-bg:#fef3c7;--c-red:#991b1b;--c-red-bg:#fee2e2;
+    --c-blue:#1e3a5f;--c-blue-bg:#dbeafe;--c-match:#064e3b;--c-match-bg:#d1fae5;
+    --font-sans:'Georgia','Times New Roman',serif;
+    --font-ui:'Segoe UI',system-ui,-apple-system,sans-serif;
+    --radius:8px;--radius-lg:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:var(--font-ui);background:var(--c-bg);color:var(--c-text);min-height:100vh;line-height:1.6;}
+  .header{background:#1a7a1a;color:white;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+  .header{position:sticky;top:0;z-index:100;}
+  .header-logo{display:flex;align-items:center;flex-shrink:0;}
+  .header-logo svg{height:28px;overflow:visible;}
+  .header-center{position:absolute;left:50%;transform:translateX(-50%);text-align:center;pointer-events:none;}
+  .header-title{font-size:21px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+  .header-sub{font-size:10px;opacity:.7;margin-top:2px;letter-spacing:.05em;text-transform:uppercase;}
+  .header-steps{display:flex;gap:5px;align-items:center;}
+  .step-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:rgba(255,255,255,.15);color:rgba(255,255,255,.55);}
+  .step-dot.active{background:white;color:var(--c-accent);}
+  .step-dot.done{background:rgba(255,255,255,.45);color:white;}
+  .step-line{width:18px;height:1px;background:rgba(255,255,255,.25);}
+  .main{max-width:1180px;margin:0 auto;padding:24px 20px;}
+  .card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius-lg);padding:22px;margin-bottom:18px;}
+  .card-title{font-size:13px;font-weight:600;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+  .card-title .sb{width:20px;height:20px;border-radius:50%;background:var(--c-accent);color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .upload-zone{border:2px dashed var(--c-border-dark);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--c-bg);}
+  .upload-zone:hover,.upload-zone.has-file{border-color:var(--c-accent);background:var(--c-accent-light);}
+  .upload-zone.has-file{border-style:solid;}
+  .upload-icon{font-size:28px;margin-bottom:6px;}
+  .upload-label{font-size:13px;color:var(--c-text-muted);}
+  .upload-label strong{color:var(--c-accent);}
+  .upload-status{font-size:12px;color:var(--c-match);font-weight:500;margin-top:6px;}
+  input[type=file]{display:none;}
+  .filter-pills{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+  .pill{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;}
+  .pill-green{background:var(--c-match-bg);color:var(--c-match);}
+  .pill-amber{background:var(--c-amber-bg);color:var(--c-amber);}
+  .pill-red{background:var(--c-red-bg);color:var(--c-red);}
+  .tender-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .tender-table th{text-align:left;padding:7px 10px;background:var(--c-bg);color:var(--c-text-muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--c-border);white-space:nowrap;}
+  .tender-table td{padding:9px 10px;border-bottom:1px solid var(--c-border);vertical-align:top;}
+  .tender-table tr:last-child td{border-bottom:none;}
+  .tender-table tr:hover td{background:var(--c-bg);}
+  .match-badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px;white-space:nowrap;}
+  .match-ok{background:var(--c-match-bg);color:var(--c-match);}
+  .match-warn{background:var(--c-amber-bg);color:var(--c-amber);}
+  .inline-input{width:100%;padding:4px 7px;border:1px solid var(--c-border-dark);border-radius:5px;font-size:11px;font-family:var(--font-ui);color:var(--c-text);background:white;}
+  .inline-input:focus{outline:none;border-color:var(--c-accent);}
+  .sr-num{width:26px;height:26px;border-radius:50%;background:var(--c-accent);color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font-ui);}
+  .btn-primary{background:var(--c-accent);color:white;}
+  .btn-primary:hover{background:var(--c-accent-mid);}
+  .btn-secondary{background:white;color:var(--c-text);border:1px solid var(--c-border-dark);}
+  .btn-secondary:hover{background:var(--c-bg);}
+  .btn-sm{padding:5px 11px;font-size:11px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-group{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .summary-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+  .toggle-tabs{display:flex;gap:0;border:1px solid var(--c-border-dark);border-radius:var(--radius);overflow:hidden;}
+  .toggle-tab{padding:6px 14px;font-size:12px;cursor:pointer;background:white;border:none;font-family:var(--font-ui);color:var(--c-text-muted);font-weight:500;transition:all .15s;}
+  .toggle-tab.active{background:var(--c-accent);color:white;}
+  .summary-visual{font-family:var(--font-sans);font-size:14px;line-height:1.85;color:var(--c-text);background:white;border:1px solid var(--c-border);border-radius:var(--radius);padding:22px;}
+  .summary-visual p{margin-bottom:16px;}
+  .summary-visual p:last-child{margin-bottom:0;}
+  .summary-code{font-family:'Courier New',Courier,monospace;font-size:11px;line-height:1.65;background:#1e1e1e;color:#d4d4d4;border-radius:var(--radius);padding:18px;white-space:pre-wrap;word-break:break-all;max-height:520px;overflow-y:auto;}
+  .date-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .date-label{font-size:12px;color:var(--c-text-muted);font-weight:500;}
+  .date-input{padding:7px 10px;border:1px solid var(--c-border-dark);border-radius:var(--radius);font-size:12px;font-family:var(--font-ui);color:var(--c-text);}
+  .date-input:focus{outline:none;border-color:var(--c-accent);}
+  .processing{display:flex;align-items:center;gap:9px;padding:12px 16px;background:var(--c-accent-light);border:1px solid var(--c-accent);border-radius:var(--radius);font-size:12px;color:var(--c-accent);font-weight:500;}
+  .spinner{width:14px;height:14px;border:2px solid var(--c-accent);border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .table-wrapper{overflow-x:auto;}
+  .table-wrapper-inner{max-height:500px;overflow-y:auto;}
+  .stats-bar{display:flex;gap:14px;flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--c-border);margin-bottom:14px;}
+  .stat{text-align:center;}
+  .stat-num{font-size:20px;font-weight:600;color:var(--c-accent);}
+  .stat-label{font-size:10px;color:var(--c-text-muted);text-transform:uppercase;letter-spacing:.04em;}
+  .notice{padding:11px 14px;border-radius:var(--radius);font-size:12px;display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;}
+  .notice-info{background:var(--c-blue-bg);color:var(--c-blue);border:1px solid #93c5fd;}
+  .notice-warn{background:var(--c-amber-bg);color:var(--c-amber);border:1px solid #fcd34d;}
+  .notice-error{background:var(--c-red-bg);color:var(--c-red);border:1px solid #fca5a5;}
+  .section-divider{display:flex;align-items:center;gap:10px;margin:20px 0 16px;}
+  .section-divider-line{flex:1;height:1px;background:var(--c-border);}
+  .section-divider-label{font-size:11px;font-weight:600;color:var(--c-text-hint);text-transform:uppercase;letter-spacing:.06em;}
+  textarea.desc-input{width:100%;padding:5px 7px;border:1px solid var(--c-border-dark);border-radius:5px;font-size:11px;font-family:var(--font-ui);color:var(--c-text);background:white;resize:vertical;min-height:50px;}
+  textarea.desc-input:focus{outline:none;border-color:var(--c-accent);}
+  .pdf-log{font-size:11px;color:var(--c-text-muted);background:var(--c-bg);border:1px solid var(--c-border);border-radius:6px;padding:10px 12px;margin-top:10px;max-height:110px;overflow-y:auto;font-family:'Courier New',monospace;display:none;}
+  .hidden{display:none!important;}
+  .footer{text-align:center;padding:20px;font-size:11px;color:var(--c-text-hint);border-top:1px solid var(--c-border);margin-top:28px;}
+</style>
+</head>
+<body>
+
+<div class="header" style="background:#1a7a1a;color:white;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+  <!-- Logo — left -->
+  <div class="header-logo">
+    <svg viewBox="0 0 260 36" xmlns="http://www.w3.org/2000/svg" height="30" overflow="visible">
+      <text x="0" y="28" font-family="'Arial Black',Arial,sans-serif" font-weight="900" font-size="34" fill="white" letter-spacing="2">LOCARLA</text>
+    </svg>
+  </div>
+
+  <!-- Title — absolute center -->
+  <div class="header-center">
+    <div class="header-title">Daily Summary Tool</div>
+    <div class="header-sub">Social Housing UK · Industry Insights</div>
+  </div>
+
+  <!-- Steps — right -->
+  <div class="header-steps">
+    <div class="step-dot active" id="sdot1">1</div><div class="step-line"></div>
+    <div class="step-dot" id="sdot2">2</div><div class="step-line"></div>
+    <div class="step-dot" id="sdot3">3</div>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═══ STEP 1 ════════════════════════════════════════════════════════════════ -->
+<div class="card" id="step1-card">
+  <div class="card-title"><span class="sb">1</span> Select Mode &amp; Upload Daily Bulletin</div>
+
+  <div style="display:flex;gap:0;border:1px solid var(--c-border-dark);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;width:fit-content;">
+    <button class="toggle-tab active" id="modeTenders" onclick="switchMode('tenders')" style="padding:8px 22px;font-size:13px;font-weight:600;">📋 Tenders Summary</button>
+    <button class="toggle-tab" id="modeAwards" onclick="switchMode('awards')" style="padding:8px 22px;font-size:13px;font-weight:600;">🏆 Contract Awards</button>
+    <button class="toggle-tab" id="modeNews" onclick="switchMode('news')" style="padding:8px 22px;font-size:13px;font-weight:600;">📰 News Summary</button>
+  </div>
+
+  <div class="notice notice-info" id="modeNotice">
+    Tenders are extracted from the Bulletin then matched to the Tenders Excel. Only Housing-sector Tender Alerts are included.
+  </div>
+  <div class="filter-pills" id="modePills">
+    <span class="pill pill-green">✓ Sector: Housing</span>
+    <span class="pill pill-green">✓ Tender Alerts section only</span>
+    <span class="pill pill-red">✗ Titles starting: CDE / Additional Information / Modification Notice / Cancelled</span>
+    <span class="pill pill-red">✗ Category: Materials / Other Daily Tenders</span>
+    <span class="pill pill-amber">⚠ FM: Hard FM / Mould / Damp only</span>
+    <span class="pill pill-amber">⚠ Prof Svcs: Architect &amp; Surveyor / EPC / Fire Risk only</span>
+  </div>
+
+  <!-- Input tabs hidden — HTML source only for now -->
+  <div id="inputTabsRow" style="display:none;">
+    <button class="toggle-tab" id="tabPdf"  onclick="switchInputTab('pdf')">📄 Upload PDF</button>
+    <button class="toggle-tab active" id="tabHtml" onclick="switchInputTab('html')">🌐 Paste HTML Source</button>
+  </div>
+
+  <!-- PDF panel (hidden — future feature) -->
+  <div id="panelPdf" style="display:none;">
+    <div class="upload-zone" id="pdfZone" onclick="document.getElementById('pdfInput').click()">
+      <div class="upload-icon">📄</div>
+      <div class="upload-label"><strong>Click to upload</strong> the HousingNet Bulletin PDF<br>or drag and drop here</div>
+      <div class="upload-status hidden" id="pdfStatus"></div>
+    </div>
+    <input type="file" id="pdfInput" accept=".pdf">
+    <div class="pdf-log" id="pdfLog"></div>
+  </div>
+
+  <!-- HTML panel — always visible -->
+  <div id="panelHtml">
+    <div style="font-size:12px;color:var(--c-text-muted);margin-bottom:8px;line-height:1.6;">
+      While logged into Locarla, open the bulletin page → press <strong>Ctrl+U</strong> → <strong>Ctrl+A</strong> → <strong>Ctrl+C</strong> → paste below.
+    </div>
+    <textarea id="htmlPasteArea" placeholder="Paste the full HTML source of the bulletin here…"
+      style="width:100%;height:140px;padding:10px;border:2px dashed var(--c-border-dark);border-radius:var(--radius);font-size:11px;font-family:monospace;resize:vertical;background:var(--c-bg);color:var(--c-text);outline:none;"
+      oninput="this.style.borderColor=this.value.length>100?'var(--c-accent)':'var(--c-border-dark)'"></textarea>
+    <div id="htmlParseStatus" style="font-size:12px;color:var(--c-match);font-weight:500;margin-top:4px;display:none;"></div>
+  </div>
+
+  <div class="date-row" style="margin-top:14px;">
+    <span class="date-label">Summary Date:</span>
+    <input type="date" class="date-input" id="summaryDate">
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" id="parseBulletinBtn" onclick="parseBulletin()">Process Bulletin →</button>
+  </div>
+</div>
+
+<!-- ═══ STEP 2 ════════════════════════════════════════════════════════════════ -->
+<div class="card hidden" id="step2-card">
+  <div class="card-title" id="step2Title"><span class="sb">2</span> Upload Excel &amp; Match</div>
+  <div id="bulletinStats" class="stats-bar"></div>
+
+  <div id="excelUploadSection">
+    <div id="excelNotice" class="notice notice-info"></div>
+    <div class="upload-zone" id="xlsxZone" onclick="document.getElementById('xlsxInput').click()">
+      <div class="upload-icon">📊</div>
+      <div class="upload-label" id="xlsxLabel"><strong>Click to upload</strong> Excel file</div>
+      <div class="upload-status hidden" id="xlsxStatus"></div>
+    </div>
+    <input type="file" id="xlsxInput" accept=".xlsx">
+    <div id="matchProcessing" class="processing hidden" style="margin-top:10px;">
+      <div class="spinner"></div> <span id="matchingMsg">Matching against Excel…</span>
+    </div>
+  </div>
+
+  <div id="reviewSection" class="hidden">
+    <div class="section-divider">
+      <div class="section-divider-line"></div>
+      <div class="section-divider-label">Review &amp; Edit</div>
+      <div class="section-divider-line"></div>
+    </div>
+    <div class="notice notice-warn hidden" id="unmatchedNotice"></div>
+    <div class="table-wrapper">
+      <div class="table-wrapper-inner">
+        <table class="tender-table">
+          <thead id="reviewTableHead"></thead>
+          <tbody id="reviewTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-secondary btn-sm" onclick="addManualRow()">+ Add Row</button>
+      <button class="btn btn-primary" onclick="goToStep3()">Generate Summary →</button>
+      <button class="btn btn-secondary" onclick="downloadSpreadsheet()">⬇ Download List</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ STEP 3 ════════════════════════════════════════════════════════════════ -->
+<div class="card hidden" id="step3-card">
+  <div class="card-title" id="step3Title"><span class="sb">3</span> Generated Summary</div>
+
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+    <label style="font-size:12px;font-weight:600;white-space:nowrap;">Anthropic API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-…"
+      style="flex:1;min-width:220px;font-size:12px;padding:6px 10px;border:1px solid var(--c-border);border-radius:6px;font-family:monospace;"
+      oninput="saveApiKey(this.value)">
+    <span id="apiKeyStatus" style="font-size:11px;color:#888;"></span>
+  </div>
+
+  <div class="summary-toolbar">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="toggle-tabs">
+        <button class="toggle-tab active" id="tabVisual" onclick="switchSummaryTab('visual')">Visual</button>
+        <button class="toggle-tab"        id="tabCode"   onclick="switchSummaryTab('code')">WordPress Code</button>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="regenBtn" onclick="regenerateSummary()">↺ Regenerate</button>
+    </div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" id="copyVisualBtn" onclick="copyToClipboard('visual')">Copy Text</button>
+      <button class="btn btn-secondary btn-sm" id="newTabBtn"     onclick="convertLinksNewTab()" title="Add target=_blank to all links in WP code">🔗 Links → New Tab</button>
+      <button class="btn btn-primary btn-sm"   id="copyCodeBtn"   onclick="copyToClipboard('code')">Copy WP Code</button>
+    </div>
+  </div>
+
+  <div id="summaryGenerating" class="processing hidden" style="margin-bottom:12px;">
+    <div class="spinner"></div> Generating summary with AI…
+  </div>
+  <div id="summaryApiError" class="notice notice-error hidden"></div>
+  <div id="summaryVisual" class="summary-visual"></div>
+  <div id="summaryCode" class="summary-code hidden"></div>
+
+  <!-- ── News Summary Panel ───────────────────────────────────────────────── -->
+  <div id="newsSummaryPanel" class="hidden">
+
+    <!-- Date row -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+      <label style="font-size:13px;font-weight:600;color:var(--c-text);">News Date:</label>
+      <input type="date" id="newsDate" style="padding:6px 10px;border:1px solid var(--c-border-dark);border-radius:var(--radius);font-size:13px;background:var(--c-bg);color:var(--c-text);">
+    </div>
+
+    <!-- Input label -->
+    <div style="font-size:12px;font-weight:600;color:var(--c-text);margin-bottom:4px;">① Paste news text here</div>
+    <div style="font-size:11px;color:var(--c-text-muted);margin-bottom:8px;">
+      Paste your news content directly. Each paragraph = one story. Links format: <code>__[Source](URL)__</code>
+    </div>
+
+    <!-- WP-style mini toolbar -->
+    <div style="display:flex;gap:4px;padding:5px 8px;background:#f1f1f1;border:1px solid #ccc;border-bottom:none;border-radius:4px 4px 0 0;align-items:center;">
+      <button type="button" onclick="newsEditorCmd('bold')"   style="width:28px;height:26px;border:1px solid #ccc;background:white;border-radius:3px;cursor:pointer;font-weight:700;font-size:13px;" title="Bold">B</button>
+      <button type="button" onclick="newsEditorCmd('italic')" style="width:28px;height:26px;border:1px solid #ccc;background:white;border-radius:3px;cursor:pointer;font-style:italic;font-size:13px;" title="Italic">I</button>
+      <div style="width:1px;height:18px;background:#ccc;margin:0 4px;"></div>
+      <button type="button" onclick="newsClearEditor()"       style="padding:0 10px;height:26px;border:1px solid #ccc;background:white;border-radius:3px;cursor:pointer;font-size:11px;color:#555;" title="Clear">Clear</button>
+      <span style="font-size:10px;color:#aaa;margin-left:8px;">Visual editor — paste your text directly</span>
+    </div>
+
+    <!-- Contenteditable rich editor -->
+    <div id="newsEditorArea"
+      contenteditable="true"
+      spellcheck="true"
+      style="width:100%;min-height:200px;max-height:320px;overflow-y:auto;padding:16px;border:1px solid #ccc;border-radius:0 0 4px 4px;font-size:14px;font-family:Georgia,serif;line-height:1.85;background:white;color:#333;outline:none;box-sizing:border-box;"
+    ></div>
+
+    <!-- Convert button -->
+    <div style="display:flex;gap:8px;align-items:center;margin:14px 0 10px;">
+      <button class="btn btn-primary" onclick="newsConvert()" id="newsApplyBtn" style="min-width:190px;">✨ Convert to WP Code</button>
+      <span style="font-size:11px;" id="newsApplyStatus"></span>
+    </div>
+
+    <!-- Output label -->
+    <div style="font-size:12px;font-weight:600;color:var(--c-text);margin-bottom:6px;">② WordPress Code — ready to paste into Text/HTML editor</div>
+    <textarea id="newsOutputCode" readonly
+      placeholder="WP code will appear here after conversion…"
+      style="width:100%;height:220px;padding:14px;border:1px solid var(--c-border-dark);border-radius:var(--radius);font-size:11px;font-family:monospace;resize:vertical;background:#f8fbf8;color:var(--c-text);outline:none;line-height:1.7;box-sizing:border-box;"></textarea>
+
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="btn btn-primary"   onclick="newsCopyCode()" id="newsCopyBtn">Copy WP Code</button>
+      <button class="btn btn-secondary" onclick="newsClearAll()">Clear All</button>
+    </div>
+
+  </div>
+
+  <div class="btn-group" style="margin-top:14px;">
+    <button class="btn btn-secondary" onclick="goBackToReview()" id="editListBtn">← Edit List</button>
+    <button class="btn btn-secondary" onclick="downloadSpreadsheet()" id="downloadBtn">⬇ Download Spreadsheet</button>
+  </div>
+</div>
+
+</div><!-- .main -->
+<div class="footer">Daily Summary Tool · Locarla Social Housing UK</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+'use strict';
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const TITLE_DROP_PREFIXES = [
+  'AIN -','AIN-','CDE -','CDE-',
+  'Additional Information -','Modification Notice -',
+  'Cancelled -','Cancelled-','Expired -',
+];
+const WINNER_SKIP_TERMS = ['not awarded','cancelled','withdrawn','no award'];
+const FM_ALLOWED_PT     = ['hard fm','mould','damp'];
+const PROFSVC_ALLOWED_PT= ['architect & surveyor','epc / energy management','fire risk assessment'];
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const state = {
+  mode: 'tenders',
+  date: '',
+  bulletinTenders: [], excelTenders: [], matchedTenders: [],
+  bulletinAwards:  [], excelAwards:  [], matchedAwards:  [],
+};
+let rotationSeed = 0;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+(function(){
+  const d = new Date();
+  const iso = d.toISOString().split('T')[0];
+  document.getElementById('summaryDate').value = iso;
+  document.getElementById('newsDate').value = iso;
+  state.date = iso;
+  loadApiKey();
+  switchInputTab('html');
+})();
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+function formatDate(iso){
+  if(!iso) return new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`;
+}
+function formatValue(v){
+  const n = typeof v==='number' ? v : parseFloat(String(v).replace(/[^0-9.]/g,''));
+  if(isNaN(n)||n===0) return '';
+  if(n>=1e9) return `£${(n/1e9).toFixed(1).replace(/\.0$/,'')}bn`;
+  if(n>=1e6) return `£${(n/1e6).toFixed(2).replace(/\.?0+$/,'')}m`;
+  if(n>=1e3) return `£${Math.round(n/1000)}k`;
+  return `£${Math.round(n)}`;
+}
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escVal(s) {return String(s||'').replace(/"/g,'&quot;');}
+function decodeEnt(str){
+  return String(str||'')
+    .replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"').replace(/&#039;/g,"'").replace(/&pound;/g,'£')
+    .replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+}
+function normTitle(t){return String(t||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+function titleSim(a,b){
+  const wa=new Set(normTitle(a).split(' ').filter(w=>w.length>3));
+  const wb=new Set(normTitle(b).split(' ').filter(w=>w.length>3));
+  if(!wa.size) return 0;
+  let c=0; for(const w of wa) if(wb.has(w)) c++;
+  return c/Math.max(wa.size,wb.size);
+}
+function plog(msg){
+  const el=document.getElementById('pdfLog');
+  el.style.display='block'; el.textContent+=msg+'\n'; el.scrollTop=el.scrollHeight;
+}
+
+// ─── PT filter ────────────────────────────────────────────────────────────────
+function ptAllowed(pt){
+  if(!pt) return true;
+  const l=pt.toLowerCase();
+  if(/^(building materials|other supplies|other daily|electronic payments|all other contracts|electric charging|materials)/i.test(pt)) return false;
+  if(/\bfm\b|facilities management|soft fm|security personnel|grounds maintenance|pest control|window cleaning|skips|waste management|tree services|legionella/i.test(pt))
+    return FM_ALLOWED_PT.some(p=>l.includes(p));
+  if(/architect|surveyor|epc|energy management|fire risk|housing consultant|housing management|insurance|legal|recruitment|it.*software|project management|call handling|social care|dlo support/i.test(pt))
+    return PROFSVC_ALLOWED_PT.some(p=>l.includes(p));
+  return true;
+}
+
+// ─── htmlGetMeta — handles Pattern A and Pattern B ───────────────────────────
+function htmlGetMeta(metaTd, label){
+  const lnorm = label.toLowerCase().replace(/[\s:]+$/,'');
+  for(const div of metaTd.querySelectorAll('div')){
+    const strong = div.querySelector('strong');
+    if(!strong) continue;
+    const stext = strong.textContent;
+    const snorm = stext.trim().toLowerCase().replace(/[\s:]+$/,'');
+    if(snorm===lnorm){
+      const val = div.textContent.replace(stext,'').trim();
+      if(val) return val;
+      let found=false;
+      for(const node of div.childNodes){
+        const isSt = node===strong||(node.nodeType===1&&node.contains&&node.contains(strong));
+        if(isSt){found=true;continue;}
+        if(found&&node.textContent.trim()) return node.textContent.trim();
+      }
+      return '';
+    }
+    if(snorm.startsWith(lnorm)){
+      const ci=stext.indexOf(':');
+      if(ci!==-1) return stext.slice(ci+1).trim();
+    }
+  }
+  return '';
+}
+function findMetaTd(root){
+  const tries=[
+    root.querySelector('td.textAlign'),
+    root.querySelector('[class*="subText"]'),
+    root.querySelector('[class*="textAlign"]'),
+    root.querySelector('td[class]'),
+    Array.from(root.querySelectorAll('td')).find(td=>td.querySelector('div > strong')),
+  ];
+  return tries.find(c=>c&&c.querySelector('div > strong'))||null;
+}
+
+// ─── Mode switcher ────────────────────────────────────────────────────────────
+function switchMode(mode){
+  state.mode=mode;
+  document.getElementById('modeTenders').classList.toggle('active',mode==='tenders');
+  document.getElementById('modeAwards').classList.toggle('active',mode==='awards');
+  document.getElementById('modeNews').classList.toggle('active',mode==='news');
+
+  // Show/hide Step 1 bulletin input & step 2 (not needed for news mode)
+  const step1Body = document.getElementById('step1Body');
+  if(step1Body) step1Body.style.display = mode==='news' ? 'none' : '';
+
+  if(mode==='tenders'){
+    document.getElementById('modeNotice').textContent='Tenders are extracted from the Bulletin then matched to the Tenders Excel. Only Housing-sector Tender Alerts are included.';
+    document.getElementById('modePills').innerHTML=`
+      <span class="pill pill-green">✓ Sector: Housing</span>
+      <span class="pill pill-green">✓ Tender Alerts section only</span>
+      <span class="pill pill-red">✗ Titles starting: AIN / CDE / Additional Information / Modification Notice / Cancelled</span>
+      <span class="pill pill-red">✗ Category: Materials / Other Daily Tenders</span>
+      <span class="pill pill-amber">⚠ FM: Hard FM / Mould / Damp only</span>
+      <span class="pill pill-amber">⚠ Prof Svcs: Architect &amp; Surveyor / EPC / Fire Risk only</span>`;
+    document.getElementById('modeNotice').style.display='';
+    document.getElementById('modePills').style.display='';
+    document.getElementById('inputTabsRow').style.display='none';
+    document.getElementById('panelHtml').style.display='';
+    document.getElementById('summaryDate').closest('.date-row').style.display='';
+    document.getElementById('parseBulletinBtn').style.display='';
+    switchInputTab('html');
+  } else if(mode==='awards'){
+    document.getElementById('modeNotice').textContent='Awards are extracted from the Contracts Awarded section of the Bulletin, then matched to the CANs Excel. Only Housing-sector Awarded contracts (UK7 or blank) are included.';
+    document.getElementById('modePills').innerHTML=`
+      <span class="pill pill-green">✓ Contracts Awarded section only (not Tender Alerts)</span>
+      <span class="pill pill-green">✓ Sector: Housing · Excel: UK7 or Blank only</span>
+      <span class="pill pill-green">✓ Excel: Status = Awarded · Total Value ≥ £30,000</span>
+      <span class="pill pill-red">✗ UK5 / UK6 / UK10–UK16 filtered out</span>
+      <span class="pill pill-red">✗ Titles starting: Additional Information / Modification Notice</span>
+      <span class="pill pill-red">✗ Winner: Not Awarded / Cancelled / Withdrawn → skipped</span>
+      <span class="pill pill-amber">⚠ FM: Hard FM / Mould / Damp only</span>
+      <span class="pill pill-amber">⚠ Prof Svcs: Architect &amp; Surveyor / EPC / Fire Risk only</span>`;
+    document.getElementById('modeNotice').style.display='';
+    document.getElementById('modePills').style.display='';
+    document.getElementById('inputTabsRow').style.display='none';
+    document.getElementById('panelHtml').style.display='';
+    document.getElementById('summaryDate').closest('.date-row').style.display='';
+    document.getElementById('parseBulletinBtn').style.display='';
+    switchInputTab('html');
+  } else {
+    // News Summary mode — skip steps 1 & 2, go straight to Step 3 news panel
+    document.getElementById('modeNotice').style.display='none';
+    document.getElementById('modePills').style.display='none';
+    document.getElementById('panelHtml').style.display='none';
+    document.getElementById('summaryDate').closest('.date-row').style.display='none';
+    document.getElementById('parseBulletinBtn').style.display='none';
+    // Show step 2 & 3 cards with news panel
+    document.getElementById('step2-card').classList.remove('hidden');
+    document.getElementById('step2-card').innerHTML=`
+      <div class="notice notice-info" style="margin:0;">
+        📰 <strong>News Summary mode</strong> — paste your existing WordPress Daily News HTML into Step 3 below and apply link formatting.
+      </div>`;
+    document.getElementById('step3-card').classList.remove('hidden');
+    document.getElementById('step3Title').innerHTML='<span class="sb">3</span> News Summary — WP Code Formatter';
+    // Hide the AI summary toolbar, show news panel
+    document.querySelector('.summary-toolbar').style.display='none';
+    document.getElementById('summaryVisual').style.display='none';
+    document.getElementById('summaryCode').style.display='none';
+    document.getElementById('newsSummaryPanel').classList.remove('hidden');
+    document.getElementById('editListBtn').style.display='none';
+    document.getElementById('downloadBtn').style.display='none';
+    document.getElementById('step3-card').scrollIntoView({behavior:'smooth'});
+    updateStepDots(3);
+  }
+}
+function switchInputTab(tab){
+  // PDF tab hidden for now — always use HTML paste
+  document.getElementById('panelPdf').style.display  = 'none';
+  document.getElementById('panelHtml').style.display = '';
+  document.getElementById('tabPdf').classList.remove('active');
+  document.getElementById('tabHtml').classList.add('active');
+}
+function switchSummaryTab(tab){
+  document.getElementById('tabVisual').classList.toggle('active',tab==='visual');
+  document.getElementById('tabCode').classList.toggle('active',  tab==='code');
+  document.getElementById('summaryVisual').classList.toggle('hidden',tab!=='visual');
+  document.getElementById('summaryCode').classList.toggle('hidden',  tab!=='code');
+}
+function updateStepDots(active){
+  for(let i=1;i<=3;i++){
+    const d=document.getElementById('sdot'+i);
+    d.classList.remove('active','done');
+    if(i<active) d.classList.add('done');
+    else if(i===active) d.classList.add('active');
+  }
+}
+
+// ─── Drag & Drop ──────────────────────────────────────────────────────────────
+['pdfZone','xlsxZone'].forEach(id=>{
+  const zone=document.getElementById(id);
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.style.borderColor='var(--c-accent)';});
+  zone.addEventListener('dragleave',()=>zone.style.borderColor='');
+  zone.addEventListener('drop',e=>{
+    e.preventDefault();zone.style.borderColor='';
+    const input=id==='pdfZone'?document.getElementById('pdfInput'):document.getElementById('xlsxInput');
+    const dt=new DataTransfer();dt.items.add(e.dataTransfer.files[0]);input.files=dt.files;
+    input.dispatchEvent(new Event('change'));
+  });
+});
+document.getElementById('pdfInput').addEventListener('change',function(e){
+  if(e.target.files.length>0){
+    document.getElementById('pdfZone').classList.add('has-file');
+    document.getElementById('pdfStatus').classList.remove('hidden');
+    document.getElementById('pdfStatus').textContent=`✓ ${e.target.files[0].name} ready`;
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AWARDS — HTML Bulletin Parser
+//
+// Confirmed from live bulletin HTML:
+//   Section start : <a name="Contracts_Awarded">
+//   Section stop  : <a name="Minutes"> or hash >= 3
+//   Trade category: a.headText style="color:#37a000" → SKIP
+//   Award TITLE   : a.headText style="color:#45b29d" (teal) ← this is the title link
+//   Client/auth   : span.sourceText > a or span (colour #444444 / #444)
+//   Meta table    : width="230" — div><strong>Label</strong> or <strong>Label:\nValue</strong>
+//   Sector/desc   : forward sibling <tr> scan
+// ═══════════════════════════════════════════════════════════════════════════════
+function extractAwardsFromHTML(html){
+  const doc = new DOMParser().parseFromString(html,'text/html');
+  const awards=[]; const seen=new Set(); let srNo=1; let inSection=false;
+
+  for(const link of doc.querySelectorAll('a')){
+    const style = link.getAttribute('style')||'';
+    const cls   = link.getAttribute('class')||'';
+    const name  = link.getAttribute('name')||'';
+    const text  = link.textContent.trim();
+
+    // ── Section start ──
+    if(!inSection){
+      if(name==='Contracts_Awarded'){ inSection=true; console.log('AWARDS: section started'); }
+      continue;
+    }
+
+    // ── Section stop ──
+    if(name){
+      if(name==='Minutes'||name.toLowerCase().includes('minute')){ console.log('AWARDS: stopped at Minutes'); break; }
+      const hm=name.match(/^hash(\d+)$/);
+      if(hm&&parseInt(hm[1])>=3){ console.log(`AWARDS: stopped at <a name="${name}">`); break; }
+    }
+
+    if(!cls.includes('headText')) continue;
+    if(style.includes('#37a000')) continue;    // trade category header → skip
+    if(!style.includes('#45b29d')) continue;   // must be teal award title
+
+    const title = decodeEnt(text);
+    if(!title||title.length<5) continue;
+    if(TITLE_DROP_PREFIXES.some(p=>title.startsWith(p))) continue;
+    if(seen.has(title)) continue;
+    seen.add(title);
+
+    console.log(`AWARDS [${srNo}]: "${title.slice(0,60)}"`);
+
+    const outerTd = link.closest('td[colspan]');
+    if(!outerTd){ console.log('  → no outerTd'); continue; }
+
+    // ── Client from span.sourceText ──
+    const srcSpan = outerTd.querySelector('span.sourceText');
+    let client = '';
+    if(srcSpan){
+      const el = srcSpan.querySelector('a')||srcSpan.querySelector('span');
+      if(el) client = decodeEnt(el.textContent.trim());
+    }
+
+    // ── Meta from 230-wide table ──
+    const metaTbl = Array.from(outerTd.querySelectorAll('table')).find(t=>{
+      const w=t.getAttribute('width')||t.style.width||''; return w==='230';
+    });
+    const metaTd = metaTbl ? findMetaTd(metaTbl) : findMetaTd(outerTd);
+
+    const pt      = metaTd ? htmlGetMeta(metaTd,'PT').replace(/\s+/g,' ').trim() : '';
+    const rawVal  = metaTd ? htmlGetMeta(metaTd,'Value').replace(/\s+/g,' ').trim() : '';
+    const winner  = metaTd ? (htmlGetMeta(metaTd,'Winner')||htmlGetMeta(metaTd,'Awarded To')).replace(/\s+/g,' ').trim() : '';
+    const tenure  = metaTd ? (htmlGetMeta(metaTd,'Tenure')||htmlGetMeta(metaTd,'Term')||htmlGetMeta(metaTd,'Contract Duration')||htmlGetMeta(metaTd,'Duration')).replace(/\s+/g,' ').trim() : '';
+    const location= metaTd ? htmlGetMeta(metaTd,'Location').replace(/\s+/g,' ').trim() : '';
+
+    console.log(`  client:"${client}" winner:"${winner}" value:"${rawVal}" pt:"${pt}"`);
+
+    if(!ptAllowed(pt)){ console.log(`  → PT filtered`); continue; }
+
+    // ── Sector + description via forward sibling scan ──
+    const outerTr = outerTd.closest('tr');
+    let sector='', description='';
+    if(outerTr){
+      let sib = outerTr.nextElementSibling;
+      while(sib){
+        const sp = Array.from(sib.querySelectorAll('p')).find(p=>p.textContent.trim().startsWith('Sector:'));
+        if(sp){
+          sector = sp.textContent.trim().replace(/^Sector:\s*/,'');
+          const dp = sib.querySelector('p.read-more');
+          if(dp) description = decodeEnt(dp.textContent.replace(/\s+/g,' ').trim());
+          break;
+        }
+        if(Array.from(sib.querySelectorAll('a.headText')).some(a=>(a.getAttribute('style')||'').includes('#45b29d'))) break;
+        sib = sib.nextElementSibling;
+      }
+    }
+
+    if(!sector||!sector.includes('Housing')){ console.log(`  → sector:"${sector}" not Housing`); continue; }
+
+    console.log(`  → sector:"${sector.slice(0,30)}" client:"${client}" winner:"${winner}" value:"${rawVal}"`);
+    if(!sector||!sector.includes('Housing')){ console.log('  → not Housing, skipping'); continue; }
+
+    let value=rawVal.replace(/&pound;/g,'£').replace(/\u00a3/g,'£');
+    if(value&&value!=='-'&&!value.startsWith('£')) value='£'+value;
+
+    awards.push({srNo:srNo++,title,client,winner,value,tenure,location,pt,sector,description,matched:false});
+  }
+  console.log(`Bulletin awards extracted: ${awards.length}`);
+  return awards;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AWARDS — CANs Excel Processing
+// Filters: Published date = summary date, UK = UK7 or blank, Sector contains Housing
+// Falls back to full UK7+blank+Housing pool if no rows match the date
+// ═══════════════════════════════════════════════════════════════════════════════
+function processAwardsExcel(ab){
+  const wb=XLSX.read(ab,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+  const h=rows[0].map(c=>String(c||'').trim());
+  const col=n=>h.indexOf(n);
+  const iT=col('Contract Title'),iC=col('Client'),iW=col('Winner'),
+        iV=col('Total Value (£)'),iTen=col('Tenure (Months)'),iL=col('Location'),
+        iPT=col('Primary Trade'),iSec=col('Sector'),iUK=col('UK'),
+        iSt=col('Status'),iD=col('Description'),iPub=col('Published');
+
+  // Parse the summary date (YYYY-MM-DD) for matching against Published column
+  // SheetJS reads dates as JS Date serials — convert summary date to compare
+  const summaryDateStr = state.date; // 'YYYY-MM-DD'
+
+  function rowMatchesDate(row) {
+    if(iPub < 0 || row[iPub] === undefined || row[iPub] === null) return true; // no date col → include
+    // SheetJS with header:1 returns dates as JS Date objects or serial numbers
+    let pub = row[iPub];
+    if(typeof pub === 'number') {
+      // Excel serial date → JS Date
+      const d = new Date(Math.round((pub - 25569) * 86400 * 1000));
+      pub = d.toISOString().split('T')[0];
+    } else if(pub instanceof Date) {
+      pub = pub.toISOString().split('T')[0];
+    } else {
+      pub = String(pub||'').slice(0,10);
+    }
+    return pub === summaryDateStr;
+  }
+
+  function buildPool(dateFilter) {
+    const out=[];
+    for(const row of rows.slice(1)){
+      const status=String(row[iSt]||'').trim();
+      const uk    =String(row[iUK]||'').trim().toUpperCase();
+      const sector=String(row[iSec]||'').trim();
+      const title =String(row[iT] ||'').trim();
+      const winner=String(row[iW] ||'').trim();
+      if(status!=='Awarded') continue;
+      // Strict UK filter: ONLY UK7 or truly blank — all others (UK5, UK6, UK10–UK16) rejected
+      if(uk!=='' && uk!=='UK7') continue;
+      if(!sector.includes('Housing')) continue;
+      if(!title) continue;
+      if(WINNER_SKIP_TERMS.some(t=>winner.toLowerCase().includes(t))) continue;
+      if(dateFilter && !rowMatchesDate(row)) continue;
+      const pt=String(row[iPT]||'').trim();
+      if(!ptAllowed(pt)) continue;
+      // Filter out awards with Total Value < £30,000 (exclude low-value noise)
+      const rawV=row[iV];
+      const numV=(rawV!==undefined&&rawV!==null&&rawV!=='')?parseFloat(String(rawV).replace(/[^0-9.]/g,'')):0;
+      if(numV>0 && numV<30000) continue;
+      out.push({
+        title, client:String(row[iC]||'').trim(), winner,
+        value:(rawV!==undefined&&rawV!==null&&rawV!=='')?formatValue(rawV):'',
+        tenure:row[iTen]?String(row[iTen]).replace(/\.0$/,''):'',
+        location:String(row[iL]||'').trim(),
+        pt, description:String(row[iD]||'').trim(),
+      });
+    }
+    return out;
+  }
+
+  // Try date-filtered pool first
+  let pool = buildPool(true);
+  console.log(`Excel awards (date-filtered ${summaryDateStr}): ${pool.length}`);
+
+  // If too few matches (date mismatch or different file), fall back to full UK7+blank pool
+  if(pool.length < 5){
+    console.log('Date filter returned too few rows — falling back to full UK7+blank pool');
+    pool = buildPool(false);
+    console.log(`Excel awards (full UK7+blank, Housing, Awarded): ${pool.length}`);
+  }
+
+  return pool;
+}
+
+// ─── Awards matching ──────────────────────────────────────────────────────────
+function matchAwards(){
+  state.matchedAwards=state.bulletinAwards.map(ba=>{
+    let best=null,bestScore=0;
+    for(const ea of state.excelAwards){
+      const s=titleSim(ba.title,ea.title);
+      if(s>bestScore){bestScore=s;best=ea;}
+    }
+    const matched=bestScore>=0.45;
+    if(matched&&best){
+      return{...ba,matched:true,
+        client:     best.client     ||ba.client,
+        winner:     best.winner     ||ba.winner,   // Excel is authoritative source for winner
+        value:      best.value      ||ba.value,
+        tenure:     best.tenure     ||ba.tenure,
+        location:   best.location   ||ba.location,
+        pt:         best.pt         ||ba.pt,
+        description:best.description||ba.description,
+      };
+    }
+    return{...ba,matched:false};
+  });
+  // Remove Not Awarded after matching (Excel winner may override bulletin)
+  state.matchedAwards=state.matchedAwards.filter(a=>
+    !WINNER_SKIP_TERMS.some(t=>(a.winner||'').toLowerCase().includes(t))
+  );
+  state.matchedAwards.forEach((a,i)=>a.srNo=i+1);
+  const un=state.matchedAwards.filter(a=>!a.matched).length;
+  if(un>0){
+    const n=document.getElementById('unmatchedNotice');
+    n.classList.remove('hidden');
+    n.innerHTML=`⚠ ${un} award(s) not matched in Excel — please fill details manually.`;
+  }
+}
+
+// ─── Tenders Excel + matching (working logic preserved) ──────────────────────
+function processTendersExcel(ab){
+  const wb=XLSX.read(ab,{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+  const h=rows[0]; const idx=n=>h.indexOf(n);
+  const[tI,cI,vI,tenI,lI,stI,secI,ptI]=[
+    idx('Contract Title'),idx('Client'),idx('Total Value (£)'),
+    idx('Tenure (Months)'),idx('Location'),idx('Status'),idx('Sector'),idx('Primary Trade'),
+  ];
+  state.excelTenders=rows.slice(1)
+    .filter(r=>{
+      const title=String(r[tI]||'').trim();
+      return r[stI]==='Open'&&!TITLE_DROP_PREFIXES.some(p=>title.startsWith(p));
+    })
+    .map(r=>({
+      title:String(r[tI]||'').trim(), client:String(r[cI]||'').trim(),
+      value:r[vI]?formatValue(r[vI]):'', tenure:r[tenI]?String(r[tenI]):'',
+      location:String(r[lI]||'').trim(), sector:String(r[secI]||''),
+      pt:String(r[ptI]||''),
+    }));
+  matchTenders();
+}
+function matchTenders(){
+  state.matchedTenders=state.bulletinTenders.map(bt=>{
+    let best=null,bestScore=0;
+    for(const et of state.excelTenders){
+      const s=titleSim(bt.title,et.title);
+      if(s>bestScore){bestScore=s;best=et;}
+    }
+    const matched=bestScore>0.55;
+    return{...bt,matched,
+      value:    matched?(best.value    ||bt.value)   :bt.value,
+      tenure:   matched?(best.tenure   ||bt.tenure)  :bt.tenure,
+      location: matched?(best.location ||bt.location):bt.location,
+      client:   matched?(best.client   ||bt.client)  :bt.client,
+    };
+  });
+  const un=state.matchedTenders.filter(t=>!t.matched).length;
+  if(un>0){
+    const n=document.getElementById('unmatchedNotice');
+    n.classList.remove('hidden');
+    n.textContent=`⚠ ${un} tender(s) not matched in Excel — please fill details manually.`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BULLETIN PARSE ENTRY POINT
+// ═══════════════════════════════════════════════════════════════════════════════
+async function parseBulletin(){
+  state.date=document.getElementById('summaryDate').value;
+  const btn=document.getElementById('parseBulletinBtn');
+  btn.disabled=true; btn.textContent='Parsing…';
+
+  try{
+    if(state.mode==='awards'){
+      const html=document.getElementById('htmlPasteArea').value.trim();
+      if(!html||html.length<500){
+        alert('Please paste the full bulletin HTML source first (Ctrl+U on the bulletin page → Ctrl+A → Ctrl+C → paste here).');
+        return;
+      }
+      const awards=extractAwardsFromHTML(html);
+      if(awards.length===0){
+        alert('No Housing contract awards found.\n\nChecklist:\n1. Paste FULL page source (Ctrl+U → Ctrl+A → Ctrl+C)\n2. Bulletin must contain a "Contracts Awarded" section\n3. Check browser Console (F12) for debug output');
+        return;
+      }
+      state.bulletinAwards=awards;
+      const ps=document.getElementById('htmlParseStatus');
+      ps.style.display=''; ps.textContent=`✓ ${awards.length} Housing awards found in bulletin`;
+      showStep2('awards');
+    } else {
+      // Tenders mode — always HTML paste
+      const html=document.getElementById('htmlPasteArea').value.trim();
+      if(!html||html.length<500){alert('Please paste the bulletin HTML source first (Ctrl+U on the bulletin page → Ctrl+A → Ctrl+C → paste here).');return;}
+      const tenders=extractTendersFromHTML(html);
+      if(tenders.length===0){alert('No Housing tenders found. Please paste the full bulletin source (Ctrl+U).');return;}
+      state.bulletinTenders=tenders;
+      const ps=document.getElementById('htmlParseStatus');
+      ps.style.display=''; ps.textContent=`✓ ${tenders.length} Housing tenders found in bulletin`;
+      showStep2('tenders');
+    }
+  }catch(err){
+    alert('Parse error: '+err.message);
+    if(state.mode==='tenders'){loadFallback();showStep2('tenders');}
+  }finally{
+    btn.disabled=false; btn.textContent='Process Bulletin →';
+  }
+}
+
+function showStep2(mode){
+  if(mode==='awards'){
+    document.getElementById('step2Title').innerHTML='<span class="sb">2</span> Upload CANs Excel &amp; Match Awards';
+    document.getElementById('excelNotice').innerHTML='Upload your <strong>CANs Excel</strong> from Locarla. The tool filters UK7 + blank rows (Status: Awarded, Sector: Housing), matches each bulletin award by title, and enriches with winner, value, tenure and location.';
+    document.getElementById('xlsxLabel').innerHTML='<strong>Click to upload</strong> CANs Excel from Locarla (.xlsx)';
+    document.getElementById('bulletinStats').innerHTML=renderStats(state.bulletinAwards,'awards');
+  } else {
+    document.getElementById('step2Title').innerHTML='<span class="sb">2</span> Upload Tenders Excel &amp; Review';
+    document.getElementById('excelNotice').textContent='Upload the Locarla Tenders Excel to match and enrich each bulletin tender with value, tenure and location.';
+    document.getElementById('xlsxLabel').innerHTML='<strong>Click to upload</strong> Tenders Excel (.xlsx) from Locarla';
+    document.getElementById('bulletinStats').innerHTML=renderStats(state.bulletinTenders,'tenders');
+  }
+  document.getElementById('reviewSection').classList.add('hidden');
+  document.getElementById('unmatchedNotice').classList.add('hidden');
+  document.getElementById('step2-card').classList.remove('hidden');
+  document.getElementById('step2-card').scrollIntoView({behavior:'smooth',block:'start'});
+  updateStepDots(2);
+}
+
+function renderStats(items,mode){
+  const cats=[...new Set(items.map(t=>t.pt))].length;
+  const lbl=mode==='awards'?'Awards in Bulletin':'Tenders Found';
+  return`<div class="stat"><div class="stat-num">${items.length}</div><div class="stat-label">${lbl}</div></div>
+    <div class="stat"><div class="stat-num">${cats}</div><div class="stat-label">Trade Categories</div></div>
+    <div class="stat"><div class="stat-num">Housing</div><div class="stat-label">Sector</div></div>
+    <div class="stat"><div class="stat-num">${formatDate(state.date)}</div><div class="stat-label">Date</div></div>`;
+}
+
+// ─── Excel upload handler ─────────────────────────────────────────────────────
+document.getElementById('xlsxInput').addEventListener('change',async function(e){
+  const file=e.target.files[0]; if(!file) return;
+  document.getElementById('matchProcessing').classList.remove('hidden');
+  document.getElementById('xlsxStatus').classList.remove('hidden');
+  document.getElementById('xlsxZone').classList.add('has-file');
+  document.getElementById('unmatchedNotice').classList.add('hidden');
+  const ab=await file.arrayBuffer();
+  try{
+    if(state.mode==='awards'){
+      document.getElementById('matchingMsg').textContent='Processing CANs Excel…';
+      state.excelAwards=processAwardsExcel(ab);
+      matchAwards();
+      renderAwardsTable();
+    } else {
+      document.getElementById('matchingMsg').textContent='Matching against Excel…';
+      processTendersExcel(ab);
+      renderTendersTable();
+    }
+    document.getElementById('xlsxStatus').textContent=`✓ ${file.name} — matched`;
+    document.getElementById('matchProcessing').classList.add('hidden');
+    document.getElementById('reviewSection').classList.remove('hidden');
+  }catch(err){
+    document.getElementById('matchProcessing').classList.add('hidden');
+    alert('Error reading Excel: '+err.message);
+  }
+});
+
+// ─── Review tables ────────────────────────────────────────────────────────────
+function renderAwardsTable(){
+  document.getElementById('reviewTableHead').innerHTML=`<tr>
+    <th>Sr.</th><th>Match</th>
+    <th style="min-width:200px;">Title</th>
+    <th style="min-width:130px;">Authority</th>
+    <th style="min-width:130px;">Winner</th>
+    <th style="min-width:80px;">Value</th>
+    <th style="min-width:55px;">Tenure</th>
+    <th style="min-width:100px;">Location</th>
+    <th style="min-width:160px;">Description</th>
+    <th style="width:32px;"></th></tr>`;
+  const tb=document.getElementById('reviewTableBody'); tb.innerHTML='';
+  state.matchedAwards.forEach((a,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><div class="sr-num">${a.srNo}</div></td>
+      <td><span class="match-badge ${a.matched?'match-ok':'match-warn'}">${a.matched?'✓ Excel':'⚠ Manual'}</span></td>
+      <td><textarea class="desc-input" style="min-height:38px;font-weight:500;" oninput="ua(${i},'title',this.value)">${escHtml(a.title)}</textarea></td>
+      <td><input class="inline-input" value="${escVal(a.client)}"   oninput="ua(${i},'client',this.value)"></td>
+      <td><input class="inline-input" value="${escVal(a.winner)}"   oninput="ua(${i},'winner',this.value)" placeholder="Winner name"></td>
+      <td><input class="inline-input" value="${escVal(a.value)}"    oninput="ua(${i},'value',this.value)"  placeholder="£1.2m"></td>
+      <td><input class="inline-input" value="${escVal(a.tenure)}"   oninput="ua(${i},'tenure',this.value)" placeholder="months"></td>
+      <td><input class="inline-input" value="${escVal(a.location)}" oninput="ua(${i},'location',this.value)"></td>
+      <td><textarea class="desc-input" oninput="ua(${i},'description',this.value)">${escHtml(a.description)}</textarea></td>
+      <td><button onclick="deleteAward(${i})" style="background:none;border:none;cursor:pointer;color:var(--c-red);font-size:16px;padding:4px 6px;" title="Remove award">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+function ua(i,f,v){state.matchedAwards[i][f]=v;}
+function deleteAward(i){
+  state.matchedAwards.splice(i,1);
+  state.matchedAwards.forEach((a,j)=>a.srNo=j+1);
+  renderAwardsTable();
+}
+
+function renderTendersTable(){
+  document.getElementById('reviewTableHead').innerHTML=`<tr>
+    <th>Sr.</th><th>Match</th>
+    <th style="min-width:200px;">Title</th>
+    <th style="min-width:140px;">Client</th>
+    <th style="min-width:80px;">Value</th>
+    <th style="min-width:55px;">Tenure</th>
+    <th style="min-width:100px;">Location</th>
+    <th style="min-width:160px;">Description</th>
+    <th style="width:32px;"></th></tr>`;
+  const tb=document.getElementById('reviewTableBody'); tb.innerHTML='';
+  state.matchedTenders.forEach((t,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><div class="sr-num">${t.srNo}</div></td>
+      <td><span class="match-badge ${t.matched?'match-ok':'match-warn'}">${t.matched?'✓ Excel':'⚠ Manual'}</span></td>
+      <td><textarea class="desc-input" style="min-height:38px;font-weight:500;" oninput="ut(${i},'title',this.value)">${escHtml(t.title)}</textarea></td>
+      <td><input class="inline-input" value="${escVal(t.client)}"   oninput="ut(${i},'client',this.value)"></td>
+      <td><input class="inline-input" value="${escVal(t.value)}"    oninput="ut(${i},'value',this.value)"  placeholder="£2.5m"></td>
+      <td><input class="inline-input" value="${escVal(t.tenure)}"   oninput="ut(${i},'tenure',this.value)" placeholder="months"></td>
+      <td><input class="inline-input" value="${escVal(t.location)}" oninput="ut(${i},'location',this.value)"></td>
+      <td><textarea class="desc-input" oninput="ut(${i},'description',this.value)">${escHtml(t.description)}</textarea></td>
+      <td><button onclick="deleteTender(${i})" style="background:none;border:none;cursor:pointer;color:var(--c-red);font-size:16px;padding:4px 6px;" title="Remove tender">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+function ut(i,f,v){state.matchedTenders[i][f]=v;}
+function deleteTender(i){
+  state.matchedTenders.splice(i,1);
+  state.matchedTenders.forEach((t,j)=>t.srNo=j+1);
+  renderTendersTable();
+}
+
+function addManualRow(){
+  if(state.mode==='awards'){
+    state.matchedAwards.push({srNo:state.matchedAwards.length+1,title:'',client:'',winner:'',value:'',tenure:'',location:'',pt:'',description:'',matched:false});
+    renderAwardsTable();
+  } else {
+    state.matchedTenders.push({srNo:state.matchedTenders.length+1,title:'',client:'',value:'',tenure:'',location:'',pt:'',description:'',matched:false,manual:true});
+    renderTendersTable();
+  }
+  document.querySelector('.table-wrapper-inner').scrollTop=99999;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUMMARY GENERATION
+// ═══════════════════════════════════════════════════════════════════════════════
+async function goToStep3(){
+  document.getElementById('step3Title').innerHTML=
+    `<span class="sb">3</span> Generated ${state.mode==='awards'?'Awards Summary':'Tenders Summary'}`;
+  document.getElementById('step3-card').classList.remove('hidden');
+  document.getElementById('step3-card').scrollIntoView({behavior:'smooth'});
+  rotationSeed=0;
+  await buildSummary();
+  updateStepDots(3);
+}
+async function regenerateSummary(){
+  rotationSeed++;
+  await buildSummary();
+  const btn=document.getElementById('regenBtn');
+  btn.textContent='✓ Regenerated';btn.style.color='var(--c-match)';
+  setTimeout(()=>{btn.textContent='↺ Regenerate';btn.style.color='';},1400);
+}
+function goBackToReview(){
+  document.getElementById('step3-card').classList.add('hidden');
+  document.getElementById('step2-card').scrollIntoView({behavior:'smooth'});
+}
+
+async function buildSummary(){
+  const isAwards=state.mode==='awards';
+  const items   =isAwards?state.matchedAwards:state.matchedTenders;
+  const dateStr =formatDate(state.date);
+  const apiKey  =(document.getElementById('apiKeyInput')?.value||'').trim();
+
+  document.getElementById('summaryVisual').innerHTML='';
+  document.getElementById('summaryCode').textContent='';
+  document.getElementById('summaryApiError').classList.add('hidden');
+  document.getElementById('summaryGenerating').classList.remove('hidden');
+
+  if(!apiKey){
+    document.getElementById('summaryGenerating').classList.add('hidden');
+    if(isAwards){
+      document.getElementById('summaryApiError').classList.remove('hidden');
+      document.getElementById('summaryApiError').textContent=
+        '⚠ An Anthropic API key is required to generate the Awards summary. Please enter your key above.';
+    } else {
+      renderLocalTenders(items,dateStr);
+    }
+    return;
+  }
+
+  // Build item list for prompt
+  const list=items.map((a,i)=>{
+    const val=a.value&&a.value!=='-'?a.value:'';
+    const ten=a.tenure?`${a.tenure} months`:'';
+    const lines=[`${i+1}. Title: ${a.title}`,`   Authority: ${a.client}`];
+    if(isAwards&&a.winner) lines.push(`   Winner: ${a.winner}`);
+    if(val)         lines.push(`   Value: ${val}`);
+    if(ten)         lines.push(`   Term: ${ten}`);
+    if(a.location)  lines.push(`   Location: ${a.location}`);
+    if(a.pt)        lines.push(`   Trade: ${a.pt}`);
+    if(a.description) lines.push(`   Scope: ${a.description.slice(0,300)}`);
+    return lines.join('\n');
+  }).join('\n\n');
+
+  const prompt=isAwards?buildAwardsPrompt(list,dateStr):buildTendersPrompt(list,dateStr);
+
+  try{
+    console.log('Calling Anthropic API with model claude-sonnet-4-6, items:', items.length);
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:4000,
+        system:'You are an expert UK social housing industry writer producing SEO-optimised daily summaries for a professional procurement website. Write in a news-style, factual, professional prose for housing contractors and procurement readers.',
+        messages:[{role:'user',content:prompt}],
+      }),
+    });
+    console.log('API response status:', res.status, res.statusText);
+    const data=await res.json();
+    console.log('API response data:', JSON.stringify(data).slice(0,200));
+    if(!res.ok||data.error) throw new Error(data.error?.message||`HTTP ${res.status} ${res.statusText}`);
+    const text=(data.content?.[0]?.text||'').trim();
+    if(!text) throw new Error('Empty API response');
+    console.log('API success, response length:', text.length);
+    document.getElementById('summaryGenerating').classList.add('hidden');
+    renderApiSummary(text,dateStr,isAwards);
+  }catch(err){
+    console.warn('API error:',err.message);
+    document.getElementById('summaryGenerating').classList.add('hidden');
+    document.getElementById('summaryApiError').classList.remove('hidden');
+    document.getElementById('summaryApiError').textContent=`⚠ API error: ${err.message}`;
+    if(!isAwards) renderLocalTenders(items,dateStr);
+  }
+}
+
+// ─── Prompts ──────────────────────────────────────────────────────────────────
+function buildAwardsPrompt(list,dateStr){
+  return `Generate a structured, SEO-optimised daily contract awards summary for the UK social housing sector dated ${dateStr}.
+
+OUTPUT — two sections in this exact order:
+
+1. INTRO LINE (one sentence only):
+Start with "Explore the latest UK social housing contract awards featuring" then list 4–6 trade/topic keywords from the awards below, ending with "across housing associations and councils."
+
+2. AWARD PARAGRAPHS (one per award, in the exact order provided):
+Do NOT add an opening line, closing line, or any preamble.
+
+STRICT paragraph rules:
+- Rotate through these three sentence structures so adjacent paragraphs never repeat the same structure:
+  S1: "[Title] sees [Authority] appoint [Winner] under a [Value][, Term] contract to [scope]."
+  S2: "[Title] has been awarded by [Authority] to [Winner] under a [Value][, Term] contract, [scope]."
+  S3: "[Title] highlights [Authority] appointing [Winner] under a [Value][, Term] [programme/contract] [scope]."
+- If Winner is blank → omit winner phrase entirely, do NOT invent one
+- If Value is blank → omit value, do NOT invent one
+- If Term is blank → omit term, do NOT invent one
+- Format values: £Xk (under £1m), £X.Xm or £Xm (£1m+)
+- Maximum 55 words per paragraph — hard limit, no exceptions
+- Plain text only — no markdown, no asterisks, no bullet points, no headings
+- Bold the Authority name using **Authority** markdown syntax
+- Never start a paragraph with a location, region, "A" or "The"
+
+Separate the intro line from the paragraphs with a blank line.
+Separate each paragraph from the next with a blank line.
+Output plain text only.
+
+Today's contract awards (${dateStr}):
+
+${list}`;
+}
+
+function buildTendersPrompt(list,dateStr){
+  return `Generate a structured, SEO-optimised daily tender summary for the UK social housing sector dated ${dateStr}.
+
+OUTPUT — two sections:
+1. INTRO LINE: one sentence starting "Explore the latest Social Housing UK tenders featuring" with 4–6 trade keywords.
+2. TENDER PARAGRAPHS: one per tender in exact order provided. No opening or closing lines.
+
+Paragraph rules:
+- Begin each with a unique engaging phrase — never start with a location, region, "A" or "The"
+- Include EXACT contract title and the issuing authority name (bold with **Authority**)
+- Format values: £Xk (under £1m) or £Xm (£1m+); omit if missing
+- Max 50 words, two sentences max, plain prose only
+- Each paragraph must open with different words
+
+Separate intro from paragraphs with a blank line. Separate paragraphs from each other with a blank line.
+Plain text only — no markdown headings, no bullets.
+
+Today's tenders (${dateStr}):
+
+${list}`;
+}
+
+// ─── Render API summary → Visual + WordPress Code ────────────────────────────
+// WordPress format (from reference):
+//   <h6>Contract Awards: DD/MM/YYYY</h6>
+//   <span style="font-weight: 400;">Intro…</span>
+//   <span style="font-weight: 400;">[plain text]</span><b>Authority</b><span style="font-weight: 400;">[rest]</span>
+function renderApiSummary(rawText,dateStr,isAwards){
+  const heading=isAwards?'Contract Awards':'Contract Tenders';
+  const blocks=rawText.split(/\n{2,}/).map(b=>b.replace(/\n/g,' ').trim()).filter(Boolean);
+
+  // Detect intro vs first paragraph
+  let intro='',paraBlocks=blocks;
+  const fl=blocks[0].toLowerCase();
+  if(fl.startsWith('intro:')){
+    intro=blocks[0].replace(/^intro:\s*/i,'').trim();
+    paraBlocks=blocks.slice(1).map(b=>b.replace(/^paragraphs:\s*/i,'').trim()).filter(Boolean);
+  } else if(fl.startsWith('explore')||fl.startsWith('today')||fl.startsWith('discover')){
+    intro=blocks[0]; paraBlocks=blocks.slice(1);
+  } else {
+    intro=isAwards
+      ?'Explore the latest UK social housing contract awards across housing associations and councils.'
+      :'Explore the latest Social Housing UK tenders across housing sector contract opportunities.';
+  }
+
+  // Visual HTML
+  const vLines=[`<p><strong style="display:block;font-size:16px;margin-bottom:6px;">${heading}: ${dateStr}</strong>${escHtml(intro)}</p>`];
+  // WP code
+  const wLines=[`<h6>${heading}: ${dateStr}</h6>`,`<span style="font-weight: 400;">${escHtml(intro)}</span>`];
+
+  for(const para of paraBlocks){
+    if(!para.trim()) continue;
+    const{wp,visual}=buildParaHtml(para);
+    vLines.push(`<p>${visual}</p>`);
+    wLines.push(wp);
+  }
+
+  document.getElementById('summaryVisual').innerHTML=vLines.join('');
+  // WP code: blank line between each element so WordPress treats them as separate blocks
+  document.getElementById('summaryCode').textContent=wLines.join('\n\n');
+}
+
+// Split a paragraph on **bold** markers → WP spans + visual
+function buildParaHtml(para){
+  // strip stray single * not part of **
+  const clean=para.replace(/\*\*(.+?)\*\*/g,'«$1»').replace(/\*/g,'').replace(/«(.+?)»/g,'**$1**');
+  const parts=[];
+  let last=0;
+  const re=/\*\*(.+?)\*\*/g; let m;
+  while((m=re.exec(clean))!==null){
+    if(m.index>last) parts.push({t:clean.slice(last,m.index),b:false});
+    parts.push({t:m[1],b:true});
+    last=m.index+m[0].length;
+  }
+  if(last<clean.length) parts.push({t:clean.slice(last),b:false});
+  if(!parts.length) parts.push({t:clean,b:false});
+
+  let wp='',visual='';
+  for(const p of parts){
+    const t=escHtml(p.t);
+    if(p.b){ wp+=`<b>${t}</b>`; visual+=`<strong>${t}</strong>`; }
+    else    { wp+=`<span style="font-weight: 400;">${t}</span>`; visual+=t; }
+  }
+  return{wp,visual};
+}
+
+// ─── Local tenders fallback ───────────────────────────────────────────────────
+function renderLocalTenders(tenders,dateStr){
+  const opener=INTRO_OPENERS[rotationSeed%INTRO_OPENERS.length];
+  const kws=buildIntroKw(tenders);
+  const intro=`${opener} ${kws}.`;
+  const vLines=[`<p><strong style="display:block;font-size:16px;margin-bottom:6px;">Contract Tenders: ${dateStr}</strong>${escHtml(intro)}</p>`];
+  const wLines=[`<h6>Contract Tenders: ${dateStr}</h6>`,`<span style="font-weight: 400;">${escHtml(intro)}</span>`];
+  tenders.forEach((t,idx)=>{
+    const li=getLeadIn(t,idx);
+    const v=t.value&&t.value!=='-'?` for ${t.value}`:'';
+    const ten=t.tenure?`, ${t.tenure}-month contract`:'';
+    const desc=shortDesc(t);
+    vLines.push(`<p>${escHtml(li)}, <em>${escHtml(t.title)}</em> from <strong>${escHtml(t.client)}</strong>${escHtml(v)}${escHtml(ten)}. ${escHtml(desc)}</p>`);
+    wLines.push(`<span style="font-weight: 400;">${escHtml(li)}, ${escHtml(t.title)} from </span><b>${escHtml(t.client)}</b><span style="font-weight: 400;">${escHtml(v)}${escHtml(ten)}. ${escHtml(desc)}</span>`);
+  });
+  document.getElementById('summaryVisual').innerHTML=vLines.join('');
+  document.getElementById('summaryCode').textContent=wLines.join('\n\n');
+}
+
+// ─── Download ─────────────────────────────────────────────────────────────────
+function downloadSpreadsheet(){
+  const wb=XLSX.utils.book_new();
+  if(state.mode==='awards'){
+    const rows=[['Sr. No.','Contract Title','Authority (Client)','Winner','Value (£)','Tenure (Months)','Location','Primary Trade','Description']];
+    state.matchedAwards.forEach(a=>rows.push([a.srNo,a.title,a.client,a.winner,a.value,a.tenure,a.location,a.pt,a.description]));
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:6},{wch:55},{wch:35},{wch:35},{wch:14},{wch:12},{wch:28},{wch:22},{wch:80}];
+    XLSX.utils.book_append_sheet(wb,ws,'Contract Awards');
+    XLSX.writeFile(wb,`Awards_${state.date||'Today'}.xlsx`);
+  } else {
+    const rows=[['Sr. No.','Contract Title','Client','Value (£)','Tenure (Months)','Location','Primary Trade','Match Status','Description']];
+    state.matchedTenders.forEach(t=>rows.push([t.srNo,t.title,t.client,t.value,t.tenure,t.location,t.pt,t.matched?'Excel Match':'Manual',t.description]));
+    const ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:6},{wch:55},{wch:35},{wch:14},{wch:12},{wch:28},{wch:22},{wch:14},{wch:80}];
+    XLSX.utils.book_append_sheet(wb,ws,'Selected Tenders');
+    XLSX.writeFile(wb,`Tenders_${state.date||'Today'}.xlsx`);
+  }
+}
+
+// ─── API key ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// NEWS SUMMARY — Markdown → WordPress HTML Converter
+//
+// Input format (per paragraph):
+//   Story text. __[Source Name](URL)__, [Source 2](URL2), and [Source 3](URL3)
+//
+// Output format:
+//   <div class="blue-color">
+//   <h6>Daily News: DD/MM/YYYY</h6>
+//   <span style="font-weight: 400;">Story text. </span>
+//   <a href="URL" target="_blank" rel="noopener noreferrer"> <span style="font-weight: 400;">Source Name</span></a>
+//   <span style="font-weight: 400;">,</span>
+//   <a href="URL2" ...> <span ...>Source 2</span></a>
+//   ...
+//   </div>
+// ═══════════════════════════════════════════════════════════════════════════════
+function newsEditorCmd(cmd){ document.execCommand(cmd,false,null); document.getElementById('newsEditorArea').focus(); }
+function newsClearEditor(){ document.getElementById('newsEditorArea').innerHTML=''; }
+
+function newsConvert(){
+  const editor = document.getElementById('newsEditorArea');
+  const rawHtml = (editor.innerHTML||'').trim();
+  const rawText = (editor.innerText||editor.textContent||'').trim();
+  if(!rawText){ alert('Please paste your news text first.'); return; }
+
+  // Format date
+  const dateVal = document.getElementById('newsDate').value;
+  let dateDisplay = '';
+  if(dateVal){
+    const [y,m,d] = dateVal.split('-');
+    dateDisplay = `${d}/${m}/${y}`;
+  } else {
+    const now = new Date();
+    dateDisplay = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+  }
+
+  // ── Strategy: parse the editor's DOM directly ──────────────────────────────
+  // This preserves <a href> URLs that would be lost via innerText.
+  // Walk the editor's child nodes, split on block elements (p, div, br pairs)
+  // to get one "paragraph" per story, then within each paragraph extract
+  // text nodes and <a> nodes in order.
+
+  function extractParagraphsFromDOM(container){
+    const paras = [];
+    let current = []; // array of {type:'text'|'link', text, url, sep}
+
+    function flush(){
+      if(current.length) paras.push(current);
+      current = [];
+    }
+
+    function walkNode(node){
+      if(node.nodeType === Node.TEXT_NODE){
+        const t = node.textContent;
+        if(t) current.push({type:'text', text:t});
+        return;
+      }
+      if(node.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = node.tagName.toLowerCase();
+
+      if(tag === 'a'){
+        const href = node.getAttribute('href')||'';
+        const text = node.innerText||node.textContent||'';
+        if(href && text.trim()) current.push({type:'link', text:text.trim(), url:href});
+        else if(text.trim()) current.push({type:'text', text:text});
+        return;
+      }
+      // Block elements = paragraph break
+      if(['p','div','br','h1','h2','h3','h4','h5','h6','li'].includes(tag)){
+        if(tag==='br'){
+          // Two consecutive <br> = paragraph break; single <br> = space
+          flush();
+          return;
+        }
+        // Walk children first
+        for(const child of node.childNodes) walkNode(child);
+        flush();
+        return;
+      }
+      // Inline elements — walk children
+      for(const child of node.childNodes) walkNode(child);
+    }
+
+    for(const child of container.childNodes) walkNode(child);
+    flush();
+    return paras;
+  }
+
+  // ── Also handle markdown __[Name](URL)__ in text nodes (fallback) ──────────
+  function expandMarkdownLinks(tokens){
+    const result = [];
+    for(const tok of tokens){
+      if(tok.type !== 'text'){ result.push(tok); continue; }
+      const LP = /(?:__\[([^\]]+)\]\(([^)]+)\)__|(?<!\!)\[([^\]]+)\]\(([^)]+)\))/g;
+      let last = 0; let m;
+      LP.lastIndex = 0;
+      let txt = tok.text.replace(/\[\s*\]\([^)]+\)\s*/g,''); // strip empty anchors
+      LP.lastIndex = 0;
+      while((m = LP.exec(txt)) !== null){
+        if(m.index > last) result.push({type:'text', text: txt.slice(last, m.index)});
+        result.push({type:'link', text:(m[1]||m[3]||'').trim(), url:(m[2]||m[4]||'').trim()});
+        last = m.index + m[0].length;
+      }
+      if(last < txt.length) result.push({type:'text', text: txt.slice(last)});
+    }
+    return result;
+  }
+
+  // ── Build one WP line from a paragraph's token array ────────────────────────
+  function buildLineFromTokens(tokens){
+    tokens = expandMarkdownLinks(tokens);
+
+    // Merge consecutive text tokens
+    const merged = [];
+    for(const tok of tokens){
+      if(tok.type==='text' && merged.length && merged[merged.length-1].type==='text'){
+        merged[merged.length-1].text += tok.text;
+      } else {
+        merged.push({...tok});
+      }
+    }
+
+    let storyText = '';
+    const links = [];
+    let pendingSep = '';
+    let storyDone = false;
+
+    for(const tok of merged){
+      if(tok.type==='link'){
+        if(!storyDone){ storyDone=true; }
+        links.push({name:tok.text, url:tok.url, sep:pendingSep});
+        pendingSep='';
+      } else {
+        if(!storyDone){
+          storyText += tok.text;
+        } else {
+          // Separator between links — clean it up
+          let s = tok.text.replace(/__/g,'').trim();
+          if(s) pendingSep = s;
+        }
+      }
+    }
+
+    storyText = storyText.replace(/__/g,'').trim();
+
+    let line = '';
+    if(storyText) line += `<span style="font-weight: 400;">${storyText} </span>`;
+    links.forEach((lk,idx)=>{
+      if(idx>0 && lk.sep){
+        let sep = lk.sep;
+        if(/^,?\s*and\s*$/i.test(sep))  sep=', and';
+        else if(/^,?\s*$/.test(sep))     sep=',';
+        line += `<span style="font-weight: 400;">${sep}</span>`;
+      }
+      line += `<a href="${lk.url}" target="_blank" rel="noopener noreferrer"> <span style="font-weight: 400;">${lk.name}</span></a>`;
+    });
+    return line;
+  }
+
+  // ── Parse DOM paragraphs ─────────────────────────────────────────────────────
+  const domParas = extractParagraphsFromDOM(editor);
+
+  // Filter out empty paragraphs
+  const validParas = domParas.filter(tokens=>{
+    const txt = tokens.map(t=>t.text||'').join('').trim();
+    return txt.length > 0;
+  });
+
+  if(validParas.length===0){
+    alert('No content found. Please paste your news text first.'); return;
+  }
+
+  const lines   = validParas.map(tokens => buildLineFromTokens(tokens));
+  const heading = `<h6>Daily News: ${dateDisplay}</h6>`;
+  const output  = `<div class="blue-color">\n${heading}\n${lines.join('\n')}\n</div>`;
+
+  document.getElementById('newsOutputCode').value = output;
+
+  const status = document.getElementById('newsApplyStatus');
+  status.textContent = `✓ ${validParas.length} paragraph${validParas.length!==1?'s':''} converted`;
+  status.style.color = 'var(--c-match)';
+  setTimeout(()=>{ status.textContent=''; }, 3000);
+  const btn = document.getElementById('newsApplyBtn');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Converted!';
+  setTimeout(()=>{ btn.textContent=orig; }, 1800);
+  document.getElementById('newsOutputCode').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+/*
+
+  // Get and format the date
+  const dateVal = document.getElementById('newsDate').value; // YYYY-MM-DD
+  let dateDisplay = '';
+  if(dateVal){
+    const [y,m,d] = dateVal.split('-');
+    dateDisplay = `${d}/${m}/${y}`;
+  } else {
+    const now = new Date();
+    dateDisplay = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+  }
+
+  const paragraphs = rawText.split(/\n\s*\n/).map(p=>p.replace(/\n/g,' ').trim()).filter(Boolean);
+
+  // Link regex: matches __[Name](URL)__ or [Name](URL) or [ ](URL)__[Name](URL)__
+  // Captures optional separator before link (",", ", and", " and", etc.)
+  // We parse the full paragraph to extract: story text + links with separators
+  function parseParagraph(para){
+    // Normalise: remove __ bold markers around links, collapse whitespace
+    // Pattern: optional [ ](url) (empty link placeholder) followed by __[Name](URL)__
+    // or just [Name](URL) or __[Name](URL)__
+
+    // First: remove empty placeholder links like [ ](url) that appear before the real link
+    para = para.replace(/\[\s*\]\([^)]+\)\s*/g, '');
+
+    // Now extract all links with their preceding separators
+    // Link pattern: __[Name](URL)__ or [Name](URL)
+    const linkRe = /(__\[([^\]]+)\]\(([^)]+)\)__|(?<!\!)\[([^\]]+)\]\(([^)]+)\))/g;
+
+    const links = [];
+    let lastIndex = 0;
+    let storyText = '';
+    let match;
+
+    // Find where the first link starts to extract story text
+    const firstLink = linkRe.exec(para);
+    if(!firstLink){
+      // No links — just a plain text paragraph
+      return { story: para.replace(/__/g,'').trim(), links:[] };
+    }
+
+    // Story text is everything before the first link
+    storyText = para.slice(0, firstLink.index)
+      .replace(/\[\s*\]\([^)]+\)/g,'') // remove empty anchors
+      .replace(/__/g,'')
+      .trim();
+
+    // Reset and collect all links with separators
+    linkRe.lastIndex = 0;
+    let remaining = para;
+    // Strip the story part
+    const firstLinkIdx = para.search(/(__\[[^\]]+\]\([^)]+\)__|(?<!\!)\[[^\]]+\]\([^)]+\))/);
+    const afterStory = para.slice(firstLinkIdx);
+
+    // Split on link pattern, keeping separators
+    const parts = afterStory.split(/(__\[[^\]]+\]\([^)]+\)__|(?<!\!)\[[^\]]+\]\([^)]+\))/);
+
+    let pendingSep = '';
+    for(const part of parts){
+      // Is this part a link?
+      const lm = part.match(/^(?:__\[([^\]]+)\]\(([^)]+)\)__|(?<!\!)\[([^\]]+)\]\(([^)]+)\))$/);
+      if(lm){
+        const name = (lm[1]||lm[3]||'').trim();
+        const url  = (lm[2]||lm[4]||'').trim();
+        if(name && url){
+          links.push({ name, url, sep: pendingSep.trim() });
+          pendingSep = '';
+        }
+      } else {
+        // Separator text between links (", ", ", and", " and", etc.)
+        const cleaned = part.replace(/__/g,'').trim();
+        if(cleaned) pendingSep = cleaned;
+      }
+    }
+
+    return { story: storyText, links };
+  }
+
+  function buildWpLine({ story, links }){
+    let line = '';
+
+    // Story text span
+    if(story){
+      line += `<span style="font-weight: 400;">${story} </span>`;
+    }
+
+    // Links
+    links.forEach((lk, idx) => {
+      // Separator between links
+      if(idx > 0 && lk.sep){
+        const sep = lk.sep.replace(/^,?\s*(and)\s*$/i,', and').replace(/^,\s*$/,',');
+        line += `<span style="font-weight: 400;">${sep}</span>`;
+      }
+      line += `<a href="${lk.url}" target="_blank" rel="noopener noreferrer"> <span style="font-weight: 400;">${lk.name}</span></a>`;
+    });
+
+    return line;
+  }
+
+  // Build full WP output
+  const lines = paragraphs.map(p => buildWpLine(parseParagraph(p)));
+  const heading = `<h6>Daily News: ${dateDisplay}</h6>`;
+  const body = lines.join('\n');
+  const output = `<div class="blue-color">\n${heading}\n${body}\n</div>`;
+
+  document.getElementById('newsOutputCode').value = output;
+
+  // Feedback
+  const status = document.getElementById('newsApplyStatus');
+  status.textContent = `✓ ${paragraphs.length} paragraph${paragraphs.length!==1?'s':''} converted`;
+  status.style.color = 'var(--c-match)';
+  setTimeout(()=>{ status.textContent=''; }, 3000);
+
+  const btn = document.getElementById('newsApplyBtn');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Converted!';
+  setTimeout(()=>{ btn.textContent = orig; }, 1800);
+
+  // Scroll to output
+  document.getElementById('newsOutputCode').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+*/
+
+function newsCopyCode(){
+  const text = document.getElementById('newsOutputCode').value;
+  if(!text.trim()){ alert('Nothing to copy — paste your text and click Convert first.'); return; }
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn = document.getElementById('newsCopyBtn');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    setTimeout(()=>btn.textContent = orig, 1800);
+  });
+}
+
+function newsClearAll(){
+  document.getElementById('newsEditorArea').innerHTML='';
+  document.getElementById('newsOutputCode').value='';
+  document.getElementById('newsApplyStatus').textContent='';
+}
+
+function saveApiKey(val){
+  try{localStorage.setItem('locarla_api_key',val.trim());}catch(e){}
+  document.getElementById('apiKeyStatus').textContent=val.trim()?'✓ Saved':'';
+}
+function loadApiKey(){
+  const DEFAULT_KEY='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';
+  try{
+    const k=localStorage.getItem('locarla_api_key')||DEFAULT_KEY;
+    localStorage.setItem('locarla_api_key',k); // ensure it's always saved
+    document.getElementById('apiKeyInput').value=k;
+    document.getElementById('apiKeyStatus').textContent='✓ Saved';
+  }catch(e){
+    document.getElementById('apiKeyInput').value=DEFAULT_KEY;
+    document.getElementById('apiKeyStatus').textContent='✓ Ready';
+  }
+}
+function convertLinksNewTab(){
+  const el = document.getElementById('summaryCode');
+  let code = el.textContent;
+
+  // Add target="_blank" rel="noopener" to every <a> tag that doesn't already have it
+  code = code.replace(/<a\s([^>]*?)>/gi, (match, attrs) => {
+    // Skip if already has target="_blank"
+    if(/target\s*=\s*["']_blank["']/i.test(attrs)) return match;
+    // Remove any existing target or rel attributes first, then add correct ones
+    attrs = attrs.replace(/\s*target\s*=\s*["'][^"']*["']/gi, '');
+    attrs = attrs.replace(/\s*rel\s*=\s*["'][^"']*["']/gi, '');
+    attrs = attrs.trim();
+    return `<a ${attrs} target="_blank" rel="noopener">`;
+  });
+
+  el.textContent = code;
+
+  // Visual feedback on button
+  const btn = document.getElementById('newTabBtn');
+  const orig = btn.textContent;
+  btn.textContent = '✓ Done';
+  btn.style.color = 'var(--c-match)';
+  btn.style.borderColor = 'var(--c-match)';
+  setTimeout(() => {
+    btn.textContent = orig;
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }, 1800);
+}
+function copyToClipboard(type){
+  const text=type==='code'
+    ?document.getElementById('summaryCode').textContent
+    :document.getElementById('summaryVisual').innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const btn=document.getElementById(type==='code'?'copyCodeBtn':'copyVisualBtn');
+    const orig=btn.textContent; btn.textContent='✓ Copied!';
+    setTimeout(()=>btn.textContent=orig,1800);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TENDERS PARSERS (HTML + PDF — working logic preserved unchanged)
+// ═══════════════════════════════════════════════════════════════════════════════
+function extractTendersFromHTML(html){
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const tenders=[]; const seen=new Set(); let srNo=1;
+  for(const link of doc.querySelectorAll('a.headText')){
+    const style=link.getAttribute('style')||'';
+    if(style.includes('#45b29d')) break;
+    if(style.includes('#37a000')) continue;
+    if(!style.includes('#334d5c')||!style.includes('22px')) continue;
+    const title=decodeEnt(link.textContent.trim());
+    if(!title||title.length<5) continue;
+    if(seen.has(title)) continue; seen.add(title);
+    if(TITLE_DROP_PREFIXES.some(p=>title.startsWith(p))) continue;
+    const outerTd=link.closest('td[colspan]'); if(!outerTd) continue;
+    const metaTbl=Array.from(outerTd.querySelectorAll('table')).find(t=>{const w=t.getAttribute('width')||t.style.width||'';return w==='230';});
+    const metaTd=metaTbl?(metaTbl.querySelector('td.textAlign')||metaTbl.querySelector('[class*="subText"]')):(outerTd.querySelector('td.textAlign')||outerTd.querySelector('[class*="subText"]'));
+    if(!metaTd) continue;
+    const pt=htmlGetMeta(metaTd,'PT').replace(/\s+/g,' ').trim();
+    const location=htmlGetMeta(metaTd,'Location').replace(/\s+/g,' ').trim();
+    const rawVal=htmlGetMeta(metaTd,'Value').replace(/\s+/g,' ').trim();
+    if(!pt) continue;
+    if(!ptAllowed(pt)) continue;
+    const outerTr=outerTd.closest('tr');
+    let sector='',description='';
+    if(outerTr){
+      let sib=outerTr.nextElementSibling;
+      while(sib){
+        const sp=Array.from(sib.querySelectorAll('p')).find(p=>p.textContent.trim().startsWith('Sector:'));
+        if(sp){sector=sp.textContent.trim().replace(/^Sector:\s*/,'');const dp=sib.querySelector('p.read-more');if(dp)description=decodeEnt(dp.textContent.replace(/\s+/g,' ').trim());break;}
+        if(sib.querySelector('a.headText')) break;
+        sib=sib.nextElementSibling;
+      }
+    }
+    if(!sector||!sector.includes('Housing')) continue;
+    const clientEl=outerTd.querySelector('span.sourceText a, span.sourceText span');
+    const client=clientEl?decodeEnt(clientEl.textContent.trim()):'';
+    let value=rawVal.replace(/&pound;/g,'£').replace(/\u00a3/g,'£');
+    if(value&&value!=='-'&&!value.startsWith('£')) value='£'+value;
+    tenders.push({srNo:srNo++,title,client,value,tenure:'',location,pt,sector,description,matched:false});
+  }
+  return tenders;
+}
+
+function extractTendersFromText(pages){
+  let tp=[];
+  for(let i=0;i<pages.length;i++){if(/Winner\s*:/i.test(pages[i])){plog(`Awards section at page ${i+1} — stopping`);break;}tp.push(pages[i]);}
+  plog(`Parsing ${tp.length} tender pages`);
+  const tenders=[]; let srNo=1;
+  for(const pageText of tp){
+    const lines=pageText.split('\n').map(l=>l.trim()).filter(Boolean);
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(!/^PT\s*:/i.test(line)) continue;
+      const ptValue=line.replace(/^PT\s*:\s*/i,'').trim();
+      if(!ptValue||!ptAllowed(ptValue)) continue;
+      let title='',client='',value='',location='';
+      let locIdx=-1;
+      for(let k=i-1;k>=Math.max(0,i-10);k--){if(/^Location:/i.test(lines[k])){locIdx=k;break;}}
+      if(locIdx>=2){title=lines[locIdx-2]||'';client=lines[locIdx-1]||'';}
+      else if(locIdx===1){title=lines[0]||'';}
+      else{for(let k=i-1;k>=Math.max(0,i-8);k--){const ln=lines[k];if(ln.length>12&&!/^(Location|Region|Value|Deadline|PT|Added|Sector|\d{4})/i.test(ln)){if(!title)title=ln;else if(!client){client=title;title=ln;break;}}}}
+      const valLine=lines.slice(Math.max(0,i-8),i).find(l=>/Value:/i.test(l));
+      if(valLine){const vm=valLine.match(/Value:\s*(£?[\d,]+)/i);if(vm)value=vm[1].startsWith('£')?vm[1]:'£'+vm[1];}
+      if(locIdx>=0){const lm=lines[locIdx].match(/Location:\s*([^R]+)/i);if(lm)location=lm[1].trim();}
+      let sector='';
+      for(let k=i+1;k<Math.min(lines.length,i+12);k++){if(/^Sector:/i.test(lines[k])){sector=lines[k].replace(/^Sector:\s*/i,'').trim();break;}}
+      if(!title||title.length<8) continue;
+      if(!sector||!sector.includes('Housing')) continue;
+      if(TITLE_DROP_PREFIXES.some(p=>title.startsWith(p))) continue;
+      tenders.push({srNo:srNo++,title,client,value,tenure:'',location,pt:ptValue,description:'',matched:false});
+    }
+  }
+  return tenders;
+}
+
+function loadFallback(){
+  state.bulletinTenders=[
+    {srNo:1,title:"Stairlifts, Steplifts, Vertical ThroughFloor Lifts and Hoists - 364_26",client:"ESPO",value:"£30,000,000",tenure:"",location:"UK",pt:"Adaptations",description:"National framework for the supply, installation, service and maintenance of stairlifts, steplifts, vertical through-floor lifts and hoists.",matched:false},
+    {srNo:2,title:"PIN - Disabled Adaptations to Bathrooms Works - CM134a",client:"East Riding of Yorkshire Council",value:"£12,000,000",tenure:"36",location:"East Riding of Yorkshire",pt:"Adaptations",description:"Adaptations to disabled bathrooms including wet-rooms, bath hoists, showers and other mobility aids.",matched:false},
+    {srNo:3,title:"Replacement of Boilers and Full Gas Heating Systems - Tenanted Properties",client:"Renfrewshire Council",value:"-",tenure:"24",location:"Renfrewshire",pt:"Central Heating",description:"Sole contractor for replacement of boilers and full gas heating systems to tenanted properties.",matched:false},
+    {srNo:4,title:"Managed Student Accommodation Services (South London) - 26-0099",client:"St Georges University of London",value:"£2,500,000",tenure:"36",location:"London",pt:"Hard FM",description:"Fully managed halls of residence service covering Hard FM, Soft FM, 24/7 Security and pastoral care.",matched:false},
+    {srNo:5,title:"Lily Gertrude Simister Court Site - Development Partner",client:"Stoke-on-Trent City Council",value:"£2,429,034",tenure:"",location:"Stoke-on-Trent",pt:"Residential New-Build",description:"Principal Contractor for development of 14 one-bed walk-up homes with car parking and landscaping.",matched:false},
+    {srNo:6,title:"PIN - Licensed & Non-Licensed Asbestos Removal Works",client:"Gateshead Metropolitan Borough Council",value:"£467,500",tenure:"",location:"Gateshead",pt:"Asbestos Removal",description:"Framework for Licensed and Non-Licensed Asbestos Removal Works to domestic properties and public buildings.",matched:false},
+    {srNo:7,title:"Contract 56 - Insulation Works to Domestic Properties",client:"North Tyneside Council",value:"£400,000",tenure:"",location:"North Tyneside",pt:"General building works",description:"Residential insulation works including removal of existing insulation supporting the Condensation, Mould and Damp team.",matched:false},
+    {srNo:8,title:"Henson Villas Demolition",client:"Hull City Council",value:"£220,000",tenure:"3",location:"Kingston upon Hull",pt:"Demolition",description:"Demolition of three 2-storey blocks in Pearson Park Conservation Area.",matched:false},
+    {srNo:9,title:"Asbestos Surveying, Sampling & Analytical Services",client:"River Clyde Homes",value:"-",tenure:"24",location:"Inverclyde",pt:"Asbestos Survey",description:"Ad-hoc asbestos surveying, sampling, analytical services and remedial works.",matched:false},
+    {srNo:10,title:"Multidisciplinary Engineering Consultancy Services Contract",client:"Wandsworth London Borough",value:"£1,100,000",tenure:"",location:"Wandsworth",pt:"Architect & Surveyor",description:"Engineering Consultancy across multiple disciplines for the Winstanley Neighbourhood Renewal Plan.",matched:false},
+  ];
+}
+
+// ─── Lead-ins + local tenders support ────────────────────────────────────────
+const INTRO_OPENERS=[
+  'Explore the latest Social Housing UK tenders featuring',
+  "Today's Social Housing UK bulletin highlights tenders across",
+  'Discover the latest contract opportunities in Social Housing UK, spanning',
+];
+const LIP={
+  adaptation:   ['Supporting independent living through home adaptation works','Advancing disability adaptation programmes across residential housing stock'],
+  heating:      ['Ensuring gas safety compliance across the housing portfolio','Advancing heating system replacement and servicing across tenanted stock'],
+  newbuild:     ['Advancing new affordable housing delivery across the region','Expanding social housing supply through new residential development'],
+  demolition:   ['Supporting housing regeneration through planned demolition works','Clearing residential sites ahead of future redevelopment programmes'],
+  insulation:   ['Improving thermal efficiency and energy performance across residential stock','Tackling fuel poverty through residential insulation and retrofit works'],
+  asbestos:     ['Ensuring safe removal of hazardous materials from housing assets','Supporting compliance through asbestos survey and remediation works'],
+  retrofit:     ['Driving decarbonisation and energy efficiency improvements across housing stock','Advancing retrofit and low-carbon upgrade programmes'],
+  firesafety:   ['Enhancing fire safety compliance across residential and communal buildings','Strengthening passive and active fire protection within the housing portfolio'],
+  firerisk:     ['Supporting statutory fire risk assessment and compliance programmes','Delivering fire risk assessment services across housing assets'],
+  electrical:   ['Supporting electrical safety compliance across housing assets','Delivering EICR and fixed electrical testing programmes'],
+  windows:      ['Improving building fabric through window and door replacement','Delivering window, door and glazing upgrades across the housing portfolio'],
+  roofing:      ['Strengthening housing asset maintenance through roofing works','Delivering roof replacement and roofline works across the estate'],
+  cladding:     ['Supporting building safety remediation and cladding replacement programmes'],
+  surveyor:     ['Procuring professional chartered surveying and valuation services'],
+  architect:    ['Advancing consultancy frameworks to underpin housing capital programmes'],
+  epc:          ['Advancing energy performance assessment and carbon reduction programmes'],
+  fm:           ['Delivering integrated facilities management services across residential assets'],
+  refurbishment:['Advancing refurbishment and improvement works across housing assets','Delivering whole-house and partial refurbishment programmes'],
+  construction: ['Supporting residential construction programmes across the region'],
+  general:      ['Supporting planned maintenance and building improvement works across housing assets','Delivering general building repairs and maintenance across the social housing portfolio'],
+  other:        ['Advancing procurement opportunities within the social housing sector'],
+};
+function pli(pool,off){return pool[(rotationSeed+off)%pool.length];}
+function getLeadIn(t,off){
+  const p=(t.pt||'').toLowerCase();
+  if(p.includes('adaptation'))   return pli(LIP.adaptation,off);
+  if(p.includes('central heating')||p.includes('gas servic')||p.includes('heat pump')||p.includes('boiler')||(p.includes('heating')&&!p.includes('commercial'))) return pli(LIP.heating,off);
+  if(p.includes('residential new')||p.includes('new-build')) return pli(LIP.newbuild,off);
+  if(p.includes('demolition'))   return pli(LIP.demolition,off);
+  if(p.includes('insulation')||p.includes('retrofit')||p.includes('ewi')) return pli(LIP.insulation,off);
+  if(p.includes('asbestos'))     return pli(LIP.asbestos,off);
+  if(p.includes('fire safety')||p.includes('passive fire')||p.includes('fire door')||p.includes('fire alarm')) return pli(LIP.firesafety,off);
+  if(p.includes('fire risk'))    return pli(LIP.firerisk,off);
+  if(p.includes('electrical')||p.includes('eicr')||p.includes('solar')||p.includes('lighting')) return pli(LIP.electrical,off);
+  if(p.includes('doors')||p.includes('windows')||p.includes('glazing')) return pli(LIP.windows,off);
+  if(p.includes('roofing'))      return pli(LIP.roofing,off);
+  if(p.includes('cladding'))     return pli(LIP.cladding,off);
+  if(p.includes('surveyor')||p.includes('valuation')) return pli(LIP.surveyor,off);
+  if(p.includes('architect'))    return pli(LIP.architect,off);
+  if(p.includes('epc')||p.includes('energy management')) return pli(LIP.epc,off);
+  if(p.includes('hard fm')||p.includes('mould')||p.includes('damp')||(p.includes('fm')&&p.length<6)) return pli(LIP.fm,off);
+  if(p.includes('refurbishment')||p.includes('voids')||p.includes('kitchen')||p.includes('bathroom')) return pli(LIP.refurbishment,off);
+  if(p.includes('construction')||p.includes('new build')||p.includes('groundwork')) return pli(LIP.construction,off);
+  return pli(LIP.general,off);
+}
+function buildIntroKw(tenders){
+  const map=[
+    {key:'adaptation',label:'disability adaptations'},{key:'central heating',label:'heating system replacement'},
+    {key:'gas servic',label:'gas servicing contracts'},{key:'heat pump',label:'heat pump installation'},
+    {key:'heating',label:'heating system replacement'},{key:'new-build',label:'new affordable housing'},
+    {key:'demolition',label:'demolition works'},{key:'retrofit',label:'retrofit and decarbonisation'},
+    {key:'insulation',label:'insulation programmes'},{key:'asbestos',label:'asbestos management'},
+    {key:'fire safety',label:'fire safety works'},{key:'fire risk',label:'fire risk assessment services'},
+    {key:'electrical',label:'electrical compliance programmes'},{key:'solar',label:'solar PV installation'},
+    {key:'roofing',label:'roofing works'},{key:'cladding',label:'cladding remediation'},
+    {key:'windows',label:'window and door replacement'},{key:'refurbishment',label:'refurbishment programmes'},
+    {key:'surveyor',label:'surveying and consultancy'},{key:'hard fm',label:'facilities management'},
+    {key:'repairs',label:'housing repairs programmes'},{key:'construction',label:'construction programmes'},
+  ];
+  const seen=new Set(),kws=[];
+  for(const t of tenders){
+    const pt=(t.pt||'').toLowerCase();
+    for(const{key,label}of map){if(pt.includes(key)&&!seen.has(label)){seen.add(label);kws.push(label);}}
+    if(kws.length>=6) break;
+  }
+  if(!kws.length) return 'housing sector contract opportunities';
+  if(kws.length===1) return kws[0];
+  return kws.slice(0,-1).join(', ')+' and '+kws[kws.length-1];
+}
+function shortDesc(t){
+  const desc=(t.description||'').trim(); if(!desc) return '';
+  const sents=desc.match(/[^.!?]+[.!?]+/g)||[desc];
+  const tw=(t.title||'').toLowerCase().split(/\s+/).filter(w=>w.length>4).slice(0,5);
+  let first='';
+  for(const s of sents){
+    const c=s.trim(); if(c.length<30) continue;
+    const ov=tw.filter(w=>c.toLowerCase().includes(w));
+    if(ov.length>=3) continue; first=c; break;
+  }
+  if(!first&&sents.length) first=sents[0].trim();
+  const words=first.split(/\s+/);
+  if(words.length>20) first=words.slice(0,20).join(' ').replace(/[,;:\-–]\s*\S*$/,'').replace(/\s+\S+$/,'');
+  if(first&&!first.match(/[.!?]$/)) first+='.';
+  return first;
+}
+</script>
+</body>
+</html>
