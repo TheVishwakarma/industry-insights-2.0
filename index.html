@@ -1297,12 +1297,24 @@ function newsConvert(){
 
   // Walk the editor DOM — preserves <a href> URLs that innerText would strip
   function extractParas(container){
-    const paras=[], flush=()=>{if(current.length){paras.push(current);current=[];}};
+    const paras=[];
     let current=[];
+
+    function flush(){
+      // Only flush if there's meaningful content
+      const txt=current.map(t=>t.text||'').join('').trim();
+      if(txt.length>0) paras.push(current.slice());
+      current=[];
+    }
+
     function walk(node){
-      if(node.nodeType===Node.TEXT_NODE){ if(node.textContent) current.push({type:'text',text:node.textContent}); return; }
+      if(node.nodeType===Node.TEXT_NODE){
+        if(node.textContent) current.push({type:'text',text:node.textContent});
+        return;
+      }
       if(node.nodeType!==Node.ELEMENT_NODE) return;
       const tag=node.tagName.toLowerCase();
+
       if(tag==='a'){
         const href=(node.getAttribute('href')||'').trim();
         const txt=(node.innerText||node.textContent||'').trim();
@@ -1310,10 +1322,20 @@ function newsConvert(){
         else if(txt)  current.push({type:'text',text:txt});
         return;
       }
-      if(['p','div','h1','h2','h3','h4','h5','h6','li'].includes(tag)){ for(const c of node.childNodes) walk(c); flush(); return; }
-      if(tag==='br'){ flush(); return; }
+      // Block elements = paragraph boundary
+      if(['p','div','h1','h2','h3','h4','h5','h6','li','tr','td'].includes(tag)){
+        for(const c of node.childNodes) walk(c);
+        flush();
+        return;
+      }
+      if(tag==='br'){
+        flush();
+        return;
+      }
+      // Inline elements (span, strong, em, etc.) — walk children
       for(const c of node.childNodes) walk(c);
     }
+
     for(const c of container.childNodes) walk(c);
     flush();
     return paras;
@@ -1369,6 +1391,7 @@ function newsConvert(){
   const paras=extractParas(editor).filter(toks=>toks.map(t=>t.text||'').join('').trim());
   const lines=paras.map(buildLine);
   const heading=`<h6>Daily News: ${dateDisplay}</h6>`;
+  // Each story line separated by \n so WordPress renders them as separate paragraphs
   const output=`<div class="blue-color">\n${heading}\n${lines.join('\n')}\n</div>`;
 
   document.getElementById('newsOutputCode').value=output;
