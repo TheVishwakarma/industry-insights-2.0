@@ -1391,8 +1391,7 @@ function newsConvert(){
   const paras=extractParas(editor).filter(toks=>toks.map(t=>t.text||'').join('').trim());
   const lines=paras.map(buildLine);
   const heading=`<h6>Daily News: ${dateDisplay}</h6>`;
-  // Each story line separated by \n so WordPress renders them as separate paragraphs
-  const output=`<div class="blue-color">\n${heading}\n${lines.join('\n')}\n</div>`;
+  const output=`<div class="blue-color">\n${heading}\n${lines.join('\n\n')}\n</div>`;
 
   document.getElementById('newsOutputCode').value=output;
   const status=document.getElementById('newsApplyStatus');
