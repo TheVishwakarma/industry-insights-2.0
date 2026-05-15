@@ -8,7 +8,7 @@
   :root {
     --c-bg:#f7f6f3;--c-surface:#ffffff;--c-border:#e2dfd8;--c-border-dark:#c9c5bc;
     --c-text:#1a1916;--c-text-muted:#6b6860;--c-text-hint:#9b9890;
-    --c-accent:#1a472a;--c-accent-light:#e8f4ec;--c-accent-mid:#2d6a4f;
+    --c-accent:#498847;--c-accent-light:#eaf2e8;--c-accent-mid:#3a6e38;
     --c-amber:#92400e;--c-amber-bg:#fef3c7;--c-red:#991b1b;--c-red-bg:#fee2e2;
     --c-blue:#1e3a5f;--c-blue-bg:#dbeafe;--c-match:#064e3b;--c-match-bg:#d1fae5;
     --font-sans:'Georgia','Times New Roman',serif;
@@ -102,11 +102,20 @@
 </head>
 <body>
 
-<div class="header" style="background:#1a7a1a;color:white;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+<div class="header" style="background:#498847;color:white;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2);">
   <!-- Logo — left -->
   <div class="header-logo">
-    <svg viewBox="0 0 260 36" xmlns="http://www.w3.org/2000/svg" height="30" overflow="visible">
-      <text x="0" y="28" font-family="'Arial Black',Arial,sans-serif" font-weight="900" font-size="34" fill="white" letter-spacing="2">LOCARLA</text>
+    <!-- Locarla logo: grid icon + wordmark -->
+    <svg viewBox="0 0 340 60" xmlns="http://www.w3.org/2000/svg" height="34" overflow="visible">
+      <!-- Grid icon (2x3 block pattern matching Locarla brand mark) -->
+      <rect x="0"  y="0"  width="16" height="16" rx="2" fill="white"/>
+      <rect x="20" y="0"  width="16" height="16" rx="2" fill="white"/>
+      <rect x="0"  y="20" width="16" height="16" rx="2" fill="white"/>
+      <rect x="20" y="20" width="16" height="16" rx="2" fill="white"/>
+      <rect x="0"  y="40" width="16" height="16" rx="2" fill="white"/>
+      <rect x="20" y="40" width="16" height="16" rx="2" fill="white"/>
+      <!-- LOCARLA wordmark -->
+      <text x="50" y="48" font-family="'Arial Black',Arial,sans-serif" font-weight="900" font-size="48" fill="white" letter-spacing="1">LOCARLA</text>
     </svg>
   </div>
 
@@ -446,66 +455,84 @@ function switchMode(mode){
   document.getElementById('modeAwards').classList.toggle('active',mode==='awards');
   document.getElementById('modeNews').classList.toggle('active',mode==='news');
 
-  // Show/hide Step 1 bulletin input & step 2 (not needed for news mode)
-  const step1Body = document.getElementById('step1Body');
-  if(step1Body) step1Body.style.display = mode==='news' ? 'none' : '';
+  // Helper: safely get style of element
+  const show = (id,v='')=>{ const el=document.getElementById(id); if(el) el.style.display=v; };
+  const cls  = (id,add,c)=>{ const el=document.getElementById(id); if(el) el.classList[add?'add':'remove'](c); };
 
-  if(mode==='tenders'){
-    document.getElementById('modeNotice').textContent='Tenders are extracted from the Bulletin then matched to the Tenders Excel. Only Housing-sector Tender Alerts are included.';
-    document.getElementById('modePills').innerHTML=`
-      <span class="pill pill-green">✓ Sector: Housing</span>
-      <span class="pill pill-green">✓ Tender Alerts section only</span>
-      <span class="pill pill-red">✗ Titles starting: AIN / CDE / Additional Information / Modification Notice / Cancelled</span>
-      <span class="pill pill-red">✗ Category: Materials / Other Daily Tenders</span>
-      <span class="pill pill-amber">⚠ FM: Hard FM / Mould / Damp only</span>
-      <span class="pill pill-amber">⚠ Prof Svcs: Architect &amp; Surveyor / EPC / Fire Risk only</span>`;
-    document.getElementById('modeNotice').style.display='';
-    document.getElementById('modePills').style.display='';
-    document.getElementById('inputTabsRow').style.display='none';
-    document.getElementById('panelHtml').style.display='';
-    document.getElementById('summaryDate').closest('.date-row').style.display='';
-    document.getElementById('parseBulletinBtn').style.display='';
+  if(mode==='tenders'||mode==='awards'){
+    // ── Restore anything news mode may have hidden ────────────────────────────
+    // Hide news banner & panel
+    show('newsInfoBanner','none');
+    cls('newsSummaryPanel',true,'hidden');
+    // Restore step3 title
+    const t=document.getElementById('step3Title');
+    if(t) t.innerHTML='<span class="sb">3</span> Generated Summary';
+    // Restore toolbar / summary areas (only if step3 is already visible)
+    const toolbar=document.querySelector('.summary-toolbar');
+    if(toolbar) toolbar.style.display='';
+    show('summaryVisual','');
+    show('summaryCode','');
+    show('editListBtn','');
+    show('downloadBtn','');
+    // Hide step2 & step3 — shown again after bulletin is processed
+    cls('step2-card',true,'hidden');
+    cls('step3-card',true,'hidden');
+
+    // ── Mode-specific notice & pills ─────────────────────────────────────────
+    if(mode==='tenders'){
+      document.getElementById('modeNotice').textContent='Tenders are extracted from the Bulletin then matched to the Tenders Excel. Only Housing-sector Tender Alerts are included.';
+      document.getElementById('modePills').innerHTML=`
+        <span class="pill pill-green">✓ Sector: Housing</span>
+        <span class="pill pill-green">✓ Tender Alerts section only</span>
+        <span class="pill pill-red">✗ Titles starting: AIN / CDE / Additional Information / Modification Notice / Cancelled</span>
+        <span class="pill pill-red">✗ Category: Materials / Other Daily Tenders</span>
+        <span class="pill pill-amber">⚠ FM: Hard FM / Mould / Damp only</span>
+        <span class="pill pill-amber">⚠ Prof Svcs: Architect &amp; Surveyor / EPC / Fire Risk only</span>`;
+    } else {
+      document.getElementById('modeNotice').textContent='Awards are extracted from the Contracts Awarded section of the Bulletin, then matched to the CANs Excel. Only Housing-sector Awarded contracts (UK7 or blank) are included.';
+      document.getElementById('modePills').innerHTML=`
+        <span class="pill pill-green">✓ Contracts Awarded section only (not Tender Alerts)</span>
+        <span class="pill pill-green">✓ Sector: Housing · Excel: UK7 or Blank only</span>
+        <span class="pill pill-green">✓ Excel: Status = Awarded · Total Value ≥ £30,000</span>
+        <span class="pill pill-red">✗ UK5 / UK6 / UK10–UK16 filtered out</span>
+        <span class="pill pill-red">✗ Titles starting: AIN / CDE / Additional Information / Modification Notice</span>
+        <span class="pill pill-red">✗ Winner: Not Awarded / Cancelled / Withdrawn → skipped</span>
+        <span class="pill pill-amber">⚠ FM: Hard FM / Mould / Damp only</span>
+        <span class="pill pill-amber">⚠ Prof Svcs: Architect &amp; Surveyor / EPC / Fire Risk only</span>`;
+    }
+    show('modeNotice','');
+    show('modePills','');
+    show('panelHtml','');
+    show('inputTabsRow','none');
+    show('parseBulletinBtn','');
+    const dr=document.getElementById('summaryDate');
+    if(dr) dr.closest('.date-row').style.display='';
     switchInputTab('html');
-  } else if(mode==='awards'){
-    document.getElementById('modeNotice').textContent='Awards are extracted from the Contracts Awarded section of the Bulletin, then matched to the CANs Excel. Only Housing-sector Awarded contracts (UK7 or blank) are included.';
-    document.getElementById('modePills').innerHTML=`
-      <span class="pill pill-green">✓ Contracts Awarded section only (not Tender Alerts)</span>
-      <span class="pill pill-green">✓ Sector: Housing · Excel: UK7 or Blank only</span>
-      <span class="pill pill-green">✓ Excel: Status = Awarded · Total Value ≥ £30,000</span>
-      <span class="pill pill-red">✗ UK5 / UK6 / UK10–UK16 filtered out</span>
-      <span class="pill pill-red">✗ Titles starting: Additional Information / Modification Notice</span>
-      <span class="pill pill-red">✗ Winner: Not Awarded / Cancelled / Withdrawn → skipped</span>
-      <span class="pill pill-amber">⚠ FM: Hard FM / Mould / Damp only</span>
-      <span class="pill pill-amber">⚠ Prof Svcs: Architect &amp; Surveyor / EPC / Fire Risk only</span>`;
-    document.getElementById('modeNotice').style.display='';
-    document.getElementById('modePills').style.display='';
-    document.getElementById('inputTabsRow').style.display='none';
-    document.getElementById('panelHtml').style.display='';
-    document.getElementById('summaryDate').closest('.date-row').style.display='';
-    document.getElementById('parseBulletinBtn').style.display='';
-    switchInputTab('html');
+
   } else {
-    // News Summary mode — skip steps 1 & 2, go straight to Step 3 news panel
-    document.getElementById('modeNotice').style.display='none';
-    document.getElementById('modePills').style.display='none';
-    document.getElementById('panelHtml').style.display='none';
-    document.getElementById('summaryDate').closest('.date-row').style.display='none';
-    document.getElementById('parseBulletinBtn').style.display='none';
-    // Show step 2 & 3 cards with news panel
-    document.getElementById('step2-card').classList.remove('hidden');
-    document.getElementById('step2-card').innerHTML=`
-      <div class="notice notice-info" style="margin:0;">
-        📰 <strong>News Summary mode</strong> — paste your existing WordPress Daily News HTML into Step 3 below and apply link formatting.
-      </div>`;
-    document.getElementById('step3-card').classList.remove('hidden');
-    document.getElementById('step3Title').innerHTML='<span class="sb">3</span> News Summary — WP Code Formatter';
-    // Hide the AI summary toolbar, show news panel
-    document.querySelector('.summary-toolbar').style.display='none';
-    document.getElementById('summaryVisual').style.display='none';
-    document.getElementById('summaryCode').style.display='none';
-    document.getElementById('newsSummaryPanel').classList.remove('hidden');
-    document.getElementById('editListBtn').style.display='none';
-    document.getElementById('downloadBtn').style.display='none';
+    // ── News Summary mode ─────────────────────────────────────────────────────
+    show('modeNotice','none');
+    show('modePills','none');
+    show('panelHtml','none');
+    show('parseBulletinBtn','none');
+    const dr=document.getElementById('summaryDate');
+    if(dr) dr.closest('.date-row').style.display='none';
+
+    // Show info banner in step2 (without destroying its innerHTML)
+    cls('step2-card',false,'hidden');
+    show('newsInfoBanner','');
+
+    // Show step3 with news panel
+    cls('step3-card',false,'hidden');
+    const t=document.getElementById('step3Title');
+    if(t) t.innerHTML='<span class="sb">3</span> News Summary — WP Code Formatter';
+    const toolbar=document.querySelector('.summary-toolbar');
+    if(toolbar) toolbar.style.display='none';
+    show('summaryVisual','none');
+    show('summaryCode','none');
+    cls('newsSummaryPanel',false,'hidden');
+    show('editListBtn','none');
+    show('downloadBtn','none');
     document.getElementById('step3-card').scrollIntoView({behavior:'smooth'});
     updateStepDots(3);
   }
@@ -1391,7 +1418,8 @@ function newsConvert(){
   const paras=extractParas(editor).filter(toks=>toks.map(t=>t.text||'').join('').trim());
   const lines=paras.map(buildLine);
   const heading=`<h6>Daily News: ${dateDisplay}</h6>`;
-  const output=`<div class="blue-color">\n${heading}\n${lines.join('\n\n')}\n</div>`;
+  // Each story line separated by \n so WordPress renders them as separate paragraphs
+  const output=`<div class="blue-color">\n${heading}\n${lines.join('\n')}\n</div>`;
 
   document.getElementById('newsOutputCode').value=output;
   const status=document.getElementById('newsApplyStatus');
@@ -1663,5 +1691,15 @@ function shortDesc(t){
   return first;
 }
 </script>
-</body>
-</html>
+<!-- Jump to top button -->
+<button id="jumpTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})"
+  title="Back to top"
+  style="display:none;position:fixed;bottom:28px;right:28px;width:44px;height:44px;border-radius:50%;background:#498847;color:white;border:none;cursor:pointer;font-size:20px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.25);z-index:999;align-items:center;justify-content:center;transition:opacity .2s;">
+  ↑
+</button>
+<script>
+  window.addEventListener('scroll',()=>{
+    const btn=document.getElementById('jumpTopBtn');
+    btn.style.display=window.scrollY>300?'flex':'none';
+  });
+</script>
