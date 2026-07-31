@@ -176,17 +176,6 @@
 
   <!-- HTML panel — always visible -->
   <div id="panelHtml">
-    <!-- File upload option -->
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-      <label for="htmlFileInput"
-        style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding:6px 14px;background:white;border:1px solid var(--c-border-dark);border-radius:var(--radius);font-size:12px;font-weight:500;color:var(--c-text);white-space:nowrap;">
-        📂 Upload HTML file
-      </label>
-      <input type="file" id="htmlFileInput" accept=".html,.htm,.txt" style="display:none;"
-        onchange="loadHtmlFile(this)">
-      <span id="htmlFileStatus" style="font-size:11px;color:var(--c-text-muted);">or paste source below</span>
-    </div>
-
     <div style="font-size:12px;color:var(--c-text-muted);margin-bottom:8px;line-height:1.6;">
       While logged into Locarla, open the bulletin page → press <strong>Ctrl+U</strong> → <strong>Ctrl+A</strong> → <strong>Ctrl+C</strong> → paste below.
     </div>
@@ -252,7 +241,7 @@
 
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
     <label style="font-size:12px;font-weight:600;white-space:nowrap;">Anthropic API Key</label>
-    <input type="password" id="apiKeyInput" placeholder="sk-ant-…"
+    <input type="password" id="apiKeyInput" placeholder="sk-proj-…"
       style="flex:1;min-width:220px;font-size:12px;padding:6px 10px;border:1px solid var(--c-border);border-radius:6px;font-family:monospace;"
       oninput="saveApiKey(this.value)">
     <span id="apiKeyStatus" style="font-size:11px;color:#888;"></span>
@@ -530,22 +519,6 @@ function switchMode(mode){
     updateStepDots(3);
   }
 }
-function loadHtmlFile(input){
-  const file=input.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const area=document.getElementById('htmlPasteArea');
-    area.value=e.target.result;
-    area.style.borderColor='var(--c-accent)';
-    const status=document.getElementById('htmlFileStatus');
-    status.textContent=`✓ ${file.name} loaded (${Math.round(file.size/1024)}KB)`;
-    status.style.color='var(--c-match)';
-    setTimeout(()=>{ status.textContent='or paste source below'; status.style.color=''; },4000);
-  };
-  reader.readAsText(file);
-  input.value=''; // reset so same file can be re-selected
-}
-
 function switchInputTab(tab){
   // PDF tab hidden for now — always use HTML paste
   document.getElementById('panelPdf').style.display  = 'none';
@@ -1712,5 +1685,3 @@ function shortDesc(t){
     btn.style.display=window.scrollY>300?'flex':'none';
   });
 </script>
-
-
