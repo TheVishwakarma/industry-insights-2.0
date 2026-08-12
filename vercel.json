@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/generate-summary.js": {
-      "maxDuration": 60
-    }
-  }
-}
