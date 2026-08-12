@@ -240,8 +240,8 @@
   <div class="card-title" id="step3Title"><span class="sb">3</span> Generated Summary</div>
 
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-    <label style="font-size:12px;font-weight:600;white-space:nowrap;">OpenAI API Key</label>
-    <input type="password" id="apiKeyInput" placeholder="sk-proj-…"
+    <label style="font-size:12px;font-weight:600;white-space:nowrap;">Anthropic API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-ant-…"
       style="flex:1;min-width:220px;font-size:12px;padding:6px 10px;border:1px solid var(--c-border);border-radius:6px;font-family:monospace;"
       oninput="saveApiKey(this.value)">
     <span id="apiKeyStatus" style="font-size:11px;color:#888;"></span>
@@ -1685,5 +1685,3 @@ function shortDesc(t){
     btn.style.display=window.scrollY>300?'flex':'none';
   });
 </script>
-
-
